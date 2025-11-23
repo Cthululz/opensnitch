@@ -2678,7 +2678,7 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
 
             secs = to_seconds(dur)
             if secs <= 0:
-                return ""
+                return QC.translate("stats", "expired")
             try:
                 created_dt = datetime.datetime.strptime(created, "%Y-%m-%d %H:%M:%S")
             except Exception:
@@ -2686,7 +2686,7 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
             remaining = (created_dt + datetime.timedelta(seconds=secs)) - datetime.datetime.now()
             return self._format_timeleft(int(remaining.total_seconds()))
         except Exception:
-            return ""
+            return "—"
 
     def _update_timeleft_column(self):
         if self.tabWidget.currentIndex() != self.TAB_RULES or not self.rulesTable.isVisible():
