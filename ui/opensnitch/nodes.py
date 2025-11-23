@@ -388,8 +388,8 @@ class Nodes(QObject):
         def _expire(args):
             node_addr, rule_name, timer_key = args
             try:
-                # delete expired rule (and notify daemon)
-                self.delete_rule(rule_name, node_addr, None)
+                # disable expired rule locally; leave cleanup to user
+                self.disable_rule(node_addr, rule_name)
             finally:
                 if timer_key in self._sched_tasks:
                     del self._sched_tasks[timer_key]

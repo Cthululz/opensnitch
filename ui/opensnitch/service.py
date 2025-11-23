@@ -730,11 +730,7 @@ class UIService(ui_pb2_grpc.UIServicer, QtWidgets.QGraphicsObject):
 
     @QtCore.pyqtSlot(str, str)
     def _on_temp_rule_expired(self, node_addr, rule_name):
-        # remove expired temporary rule instead of just disabling it
-        try:
-            self._nodes.delete_rule(rule_name, node_addr, None)
-        except Exception as e:
-            print("[service] error deleting expired rule", rule_name, e)
+        self._nodes.disable_rule(node_addr, rule_name)
         try:
             key = node_addr+rule_name
             del self._sched_tasks[key]
