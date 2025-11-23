@@ -1,5 +1,6 @@
 from PyQt6.QtGui import QStandardItemModel
 from PyQt6.QtSql import QSqlQuery, QSql
+from PyQt6 import QtWidgets
 from PyQt6.QtWidgets import QTableView
 from PyQt6.QtCore import (
     QItemSelectionRange,
@@ -39,6 +40,12 @@ class GenericTableModel(QStandardItemModel):
         self.lastColumnCount = len(self.headerLabels)
         QStandardItemModel.__init__(self, 0, self.lastColumnCount)
         self.setHorizontalHeaderLabels(self.headerLabels)
+
+    def _clean_text(self, value):
+        """Flatten text so long descriptions don't render as stacked lines."""
+        if value is None:
+            return ""
+        return " ".join(str(value).replace("\r", " ").replace("\n", " ").split())
 
     #Some QSqlQueryModel methods must be mimiced so that this class can serve as a drop-in replacement
     #mimic QSqlQueryModel.query()
@@ -166,6 +173,7 @@ class GenericTableModel(QStandardItemModel):
             cols = []
             for col in range(0, len(self.headerLabels)):
                 cols.append(str(q.value(col)))
+                cols[-1] = self._clean_text(cols[-1])
 
             self.items.append(cols)
 
@@ -223,6 +231,14 @@ class GenericTableView(QTableView):
         self.verticalHeader().setVisible(True)
         self.horizontalHeader().setDefaultAlignment(Qt.AlignmentFlag.AlignCenter)
         self.horizontalHeader().setStretchLastSection(True)
+        # Avoid wrapped text getting clipped; elide long strings instead.
+        self.setWordWrap(False)
+        self.setTextElideMode(Qt.TextElideMode.ElideRight)
+        # Ensure rows are tall enough for the font so glyphs aren't clipped.
+        row_h = max(32, int(self.fontMetrics().height() * 1.8))
+        self.verticalHeader().setDefaultSectionSize(row_h)
+        self.verticalHeader().setMinimumSectionSize(row_h)
+        self.verticalHeader().setSectionResizeMode(QtWidgets.QHeaderView.ResizeMode.Fixed)
         #the built-in vertical scrollBar of this view is always off
         self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.installEventFilter(self)

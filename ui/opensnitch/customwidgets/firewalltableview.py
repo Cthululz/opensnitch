@@ -2,6 +2,7 @@
 from PyQt6 import QtCore
 from PyQt6.QtGui import QStandardItemModel, QStandardItem
 from PyQt6.QtSql import QSqlQuery, QSqlError
+from PyQt6 import QtWidgets
 from PyQt6.QtWidgets import QTableView
 from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtCore import QCoreApplication as QC
@@ -73,6 +74,12 @@ class FirewallTableModel(QStandardItemModel):
 
         QStandardItemModel.__init__(self, 0, self.lastColumnCount)
         self.setHorizontalHeaderLabels(self.headersAll)
+
+    def _clean_text(self, value):
+        """Flatten text so descriptions stay single-line and readable."""
+        if value is None:
+            return ""
+        return " ".join(str(value).replace("\r", " ").replace("\n", " ").split())
 
     def filterByNode(self, addr):
         self.activeFilter = self.FILTER_BY_NODE
@@ -211,8 +218,9 @@ class FirewallTableModel(QStandardItemModel):
             cols = []
             cols.append(QStandardItem("")) # buttons column
             for cl in rows:
-                item = QStandardItem(cl)
-                item.setData(cl, QtCore.Qt.ItemDataRole.UserRole+1)
+                clean = self._clean_text(cl)
+                item = QStandardItem(clean)
+                item.setData(clean, QtCore.Qt.ItemDataRole.UserRole+1)
                 cols.append(item)
             self.appendRow(cols)
 
@@ -234,6 +242,13 @@ class FirewallTableView(QTableView):
         self.verticalHeader().setVisible(True)
         self.horizontalHeader().setDefaultAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
         self.horizontalHeader().setStretchLastSection(True)
+        # Keep text single-line to avoid clipped wrapped content.
+        self.setWordWrap(False)
+        self.setTextElideMode(QtCore.Qt.TextElideMode.ElideRight)
+        row_h = max(32, int(self.fontMetrics().height() * 1.8))
+        self.verticalHeader().setDefaultSectionSize(row_h)
+        self.verticalHeader().setMinimumSectionSize(row_h)
+        self.verticalHeader().setSectionResizeMode(QtWidgets.QHeaderView.ResizeMode.Fixed)
 
         # FIXME: if the firewall being used is iptables, hide the column to
         # reorder rules, it's not supported.
