@@ -1335,7 +1335,9 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
             return
         for name, node in expired:
             try:
-                self._nodes.delete_rule(name, node, self._notification_callback)
+                nid, noti = self._nodes.delete_rule(name, node, self._notification_callback)
+                if nid is not None:
+                    self._notifications_sent[nid] = noti
             except Exception as e:
                 print("clear_expired_temp_rules error:", e)
         self._rules.updated.emit(0)
@@ -1362,7 +1364,9 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
             return
         for name, node in matches:
             try:
-                self._nodes.delete_rule(name, node, self._notification_callback)
+                nid, noti = self._nodes.delete_rule(name, node, self._notification_callback)
+                if nid is not None:
+                    self._notifications_sent[nid] = noti
             except Exception as e:
                 print("clear_temp_rules_by_scope error:", e)
         self._rules.updated.emit(0)
