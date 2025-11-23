@@ -2709,6 +2709,12 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
             if row[self.COL_R_TIMELEFT] != val:
                 row[self.COL_R_TIMELEFT] = val
                 changed = True
+            try:
+                dur = str(row[self.COL_R_DURATION]).strip().lower()
+                if dur not in ("always", "until restart"):
+                    print("[timeleft debug] row:", row[self.COL_R_NAME], "dur:", dur, "enabled:", row[self.COL_R_ENABLED], "created:", row[self.COL_R_CREATED], "=>", val)
+            except Exception:
+                pass
         if changed:
             top_left = model.createIndex(0, self.COL_R_TIMELEFT)
             bottom_right = model.createIndex(len(items)-1, self.COL_R_TIMELEFT)
