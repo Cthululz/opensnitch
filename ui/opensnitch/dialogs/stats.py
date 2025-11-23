@@ -687,12 +687,6 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
                 order_by="2",
                 sort_direction=self.SORT_ORDER[0],
                 tracking_column=self.COL_R_NAME)
-        # expose timeleft column index for on-the-fly computation
-        rules_model = self.TABLES[self.TAB_RULES]['view'].model()
-        rules_model.timeleft_index = self.COL_R_TIMELEFT
-        rules_model.duration_index = self.COL_R_DURATION
-        rules_model.enabled_index = self.COL_R_ENABLED
-        rules_model.created_index = self.COL_R_CREATED
         # make rules header configurable
         rules_header = self.rulesTable.horizontalHeader()
         rules_header.setStretchLastSection(False)
@@ -2688,7 +2682,10 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
             try:
                 created_dt = datetime.datetime.strptime(created, "%Y-%m-%d %H:%M:%S")
             except Exception:
-                created_dt = datetime.datetime.fromtimestamp(int(created)) if str(created).isdigit() else datetime.datetime.now()
+                try:
+                    created_dt = datetime.datetime.fromisoformat(str(created).replace("Z", ""))
+                except Exception:
+                    created_dt = datetime.datetime.fromtimestamp(float(created)) if str(created).replace(".","",1).isdigit() else datetime.datetime.now()
             remaining = (created_dt + datetime.timedelta(seconds=secs)) - datetime.datetime.now()
             return self._format_timeleft(int(remaining.total_seconds()))
         except Exception:
