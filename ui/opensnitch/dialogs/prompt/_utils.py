@@ -121,32 +121,27 @@ def set_app_description(appDescriptionLabel, description):
         )
     )
 
-def get_duration(duration_idx):
-    if duration_idx == 0:
-        return Config.DURATION_ONCE
-    elif duration_idx == 1:
-        return _constants.DURATION_30s
-    elif duration_idx == 2:
-        return _constants.DURATION_5m
-    elif duration_idx == 3:
-        return _constants.DURATION_15m
-    elif duration_idx == 4:
-        return _constants.DURATION_30m
-    elif duration_idx == 5:
-        return _constants.DURATION_1h
-    elif duration_idx == 6:
-        return _constants.DURATION_12h
-    elif duration_idx == 7:
-        return Config.DURATION_UNTIL_RESTART
-    else:
-        return Config.DURATION_ALWAYS
+def get_duration_options(cfg):
+    return cfg.get_duration_options()
+
+def populate_duration_combo(cfg, combo):
+    combo.blockSignals(True)
+    combo.clear()
+    for d in get_duration_options(cfg):
+        combo.addItem(d)
+    combo.blockSignals(False)
+
+def get_duration(cfg, duration_idx):
+    options = get_duration_options(cfg)
+    idx = cfg.normalize_duration_index(duration_idx)
+    return options[idx]
 
 def set_default_duration(cfg, durationCombo):
     if cfg.hasKey(Config.DEFAULT_DURATION_KEY):
-        cur_idx = cfg.getInt(Config.DEFAULT_DURATION_KEY)
+        cur_idx = cfg.normalize_duration_index(cfg.getInt(Config.DEFAULT_DURATION_KEY))
         durationCombo.setCurrentIndex(cur_idx)
     else:
-        durationCombo.setCurrentIndex(Config.DEFAULT_DURATION_IDX)
+        durationCombo.setCurrentIndex(cfg.normalize_duration_index(Config.DEFAULT_DURATION_IDX))
 
 def set_default_target(combo, con, cfg, app_name, app_args):
     # set appimage as default target if the process path starts with

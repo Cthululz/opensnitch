@@ -310,6 +310,10 @@ class PreferencesDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
         else:
             self._default_duration = self._cfg.DEFAULT_DURATION_IDX
 
+        durations = self._cfg.get_duration_options()
+        self.lineCustomDurations.setText(", ".join(durations))
+        self._populate_duration_combo(self.comboUIDuration, durations)
+        self._default_duration = self._cfg.normalize_duration_index(self._default_duration)
         self.comboUIDuration.setCurrentIndex(self._default_duration)
         self.comboUIDialogPos.setCurrentIndex(self._cfg.getInt(self._cfg.DEFAULT_POPUP_POSITION))
         self.comboUIAction.setCurrentIndex(self._default_action)
@@ -732,6 +736,22 @@ class PreferencesDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
         self.comboNodeAuthVerifyType.setCurrentIndex(0)
         self._cb_combo_node_auth_type_changed(0)
 
+    def _populate_duration_combo(self, combo, durations):
+        combo.blockSignals(True)
+        combo.clear()
+        for d in durations:
+            combo.addItem(d)
+        combo.blockSignals(False)
+
+    def _parse_custom_durations(self):
+        """Return a sanitized list from the custom durations field."""
+        raw = self.lineCustomDurations.text()
+        if raw is None:
+            return []
+        durations = [d.strip() for d in raw.split(",")]
+        durations = [d for d in durations if d != ""]
+        return durations
+
     def _save_settings(self):
         self._reset_status_message()
         ui_saved = self._save_ui_config()
@@ -825,7 +845,15 @@ class PreferencesDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
 
             self._cfg.setSettings(self._cfg.STATS_REFRESH_INTERVAL, int(self.spinUIRefresh.value()))
             self._cfg.setSettings(self._cfg.DEFAULT_ACTION_KEY, self.comboUIAction.currentIndex())
-            self._cfg.setSettings(self._cfg.DEFAULT_DURATION_KEY, int(self.comboUIDuration.currentIndex()))
+            custom_durs = self._parse_custom_durations()
+            if custom_durs is not None:
+                import json
+                self._cfg.setSettings(Config.CUSTOM_DURATIONS_KEY, json.dumps(custom_durs))
+            durations = self._cfg.get_duration_options()
+            self._populate_duration_combo(self.comboUIDuration, durations)
+            cur_duration_idx = self._cfg.normalize_duration_index(self.comboUIDuration.currentIndex())
+            self.comboUIDuration.setCurrentIndex(cur_duration_idx)
+            self._cfg.setSettings(self._cfg.DEFAULT_DURATION_KEY, cur_duration_idx)
             self._cfg.setSettings(self._cfg.DEFAULT_TARGET_KEY, self.comboUITarget.currentIndex())
             self._cfg.setSettings(self._cfg.DEFAULT_TIMEOUT_KEY, self.spinUITimeout.value())
             self._cfg.setSettings(self._cfg.DEFAULT_DISABLE_POPUPS, bool(self.popupsCheck.isChecked()))

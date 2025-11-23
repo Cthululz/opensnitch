@@ -61,6 +61,7 @@ class RulesEditorDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
         self._nodes = Nodes.instance()
         self._db = Database.instance()
         self._rules = Rules.instance()
+        self._cfg = Config.get()
         self._notification_callback.connect(self._cb_notification_callback)
         self._old_rule_name = None
 
@@ -118,6 +119,8 @@ class RulesEditorDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
         self.selectListRegexpButton.setIcon(openIcon)
         self.selectNetsListButton.setIcon(openIcon)
         self.selectIPsListButton.setIcon(openIcon)
+
+        self._populate_duration_combo()
 
         if _rule != None:
             self._load_rule(rule=_rule)
@@ -324,46 +327,26 @@ class RulesEditorDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
 
             del self._notifications_sent[reply.id]
 
+    def _get_duration_options(self):
+        return self._cfg.get_duration_options()
+
+    def _populate_duration_combo(self):
+        self.durationCombo.blockSignals(True)
+        self.durationCombo.clear()
+        for d in self._get_duration_options():
+            self.durationCombo.addItem(d)
+        self.durationCombo.blockSignals(False)
+
     def _get_duration(self, duration_idx):
-        if duration_idx == 0:
-            return Config.DURATION_ONCE
-        elif duration_idx == 1:
-            return Config.DURATION_30s
-        elif duration_idx == 2:
-            return Config.DURATION_5m
-        elif duration_idx == 3:
-            return Config.DURATION_15m
-        elif duration_idx == 4:
-            return Config.DURATION_30m
-        elif duration_idx == 5:
-            return Config.DURATION_1h
-        elif duration_idx == 6:
-            return Config.DURATION_12h
-        elif duration_idx == 7:
-            return Config.DURATION_UNTIL_RESTART
-        else:
-            return Config.DURATION_ALWAYS
+        options = self._get_duration_options()
+        idx = self._cfg.normalize_duration_index(duration_idx)
+        return options[idx]
 
     def _load_duration(self, duration):
-        if duration == Config.DURATION_ONCE:
-            return 0
-        elif duration == Config.DURATION_30s:
-            return 1
-        elif duration == Config.DURATION_5m:
-            return 2
-        elif duration == Config.DURATION_15m:
-            return 3
-        elif duration == Config.DURATION_30m:
-            return 4
-        elif duration == Config.DURATION_1h:
-            return 5
-        elif duration == Config.DURATION_12h:
-            return 6
-        elif duration == Config.DURATION_UNTIL_RESTART:
-            return 7
-        else:
-            # always
-            return 8
+        options = self._get_duration_options()
+        if duration in options:
+            return options.index(duration)
+        return self._cfg.normalize_duration_index(Config.DEFAULT_DURATION_IDX)
 
     def _comma_to_regexp(self, text, expected_type):
         """translates items separated by comma, to regular expression
@@ -461,6 +444,7 @@ class RulesEditorDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
         self.statusLabel.setText("")
 
         self.actionDenyRadio.setChecked(True)
+        self._populate_duration_combo()
         self.durationCombo.setCurrentIndex(0)
 
         self.protoCheck.setChecked(False)

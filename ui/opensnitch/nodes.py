@@ -8,6 +8,8 @@ from opensnitch.database import Database
 from opensnitch.config import Config
 from opensnitch.utils import NetworkInterfaces
 from opensnitch.rules import Rules
+from opensnitch.utils import OneshotTimer
+from opensnitch.utils.duration import to_seconds
 
 import opensnitch.proto as proto
 ui_pb2, ui_pb2_grpc = proto.import_()
@@ -34,6 +36,7 @@ class Nodes(QObject):
         self._nodes = {}
         self._notifications_sent = {}
         self._interfaces = NetworkInterfaces()
+        self._sched_tasks = {}
 
     def count(self):
         return len(self._nodes)
@@ -298,6 +301,10 @@ class Nodes(QObject):
                     }
 
             self._nodes[addr]['notifications'].put(notification)
+
+            if notification.type == ui_pb2.CHANGE_RULE and notification.rules:
+                for r in notification.rules:
+                    self._schedule_temp_rule(addr, r)
         except Exception as e:
             print(self.LOG_TAG + " exception sending notification: ", e, addr, notification)
             if callback_signal != None:
@@ -325,6 +332,11 @@ class Nodes(QObject):
                     'callback': callback_signal,
                     'type': notification.type
                     }
+
+            if notification.type == ui_pb2.CHANGE_RULE and notification.rules:
+                for r in notification.rules:
+                    for c in self._nodes:
+                        self._schedule_temp_rule(c, r)
         except Exception as e:
             print(self.LOG_TAG + " exception sending notifications: ", e, notification)
 
@@ -354,6 +366,36 @@ class Nodes(QObject):
                 del self._notifications_sent[reply.id]
         except Exception as e:
             print(self.LOG_TAG, "notification exception:", e)
+
+    def _schedule_temp_rule(self, addr, rule):
+        """Local timer to disable temporary rules in the GUI DB."""
+        dur = rule.duration
+        # skip permanents
+        if dur in (Config.DURATION_ALWAYS, Config.DURATION_UNTIL_RESTART):
+            return
+        timeout = to_seconds(dur)
+        if dur == Config.DURATION_ONCE:
+            timeout = 1
+        if timeout <= 0:
+            return
+
+        key = "{0}:{1}".format(addr, rule.name)
+        if key in self._sched_tasks:
+            try:
+                self._sched_tasks[key].stop()
+            except Exception:
+                pass
+        def _expire(args):
+            node_addr, rule_name, timer_key = args
+            try:
+                self.disable_rule(node_addr, rule_name)
+            finally:
+                if timer_key in self._sched_tasks:
+                    del self._sched_tasks[timer_key]
+
+        ost = OneshotTimer(timeout, _expire, (addr, rule.name, key))
+        self._sched_tasks[key] = ost
+        ost.start()
 
     def stop_notifications(self):
         """Send a dummy notification to force Notifications class to exit.

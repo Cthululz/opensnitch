@@ -72,16 +72,20 @@ class Config:
     DURATION_15m = "15m"
     DURATION_5m = "5m"
     DURATION_30s = "30s"
+    DEFAULT_DURATION_OPTIONS = [
+        DURATION_ONCE, DURATION_30s, DURATION_5m,
+        DURATION_15m, DURATION_30m, DURATION_1h,
+        DURATION_12h,
+        DURATION_UNTIL_RESTART,
+        DURATION_ALWAYS
+    ]
 
     # Rules of this list are ignored/deleted
     RULES_DURATION_FILTER = ()
     # Rules of this list are active
     RULES_ACTIVE_TEMPORARY_RULES = ()
-    RULES_TEMPORARY_LIST = [
-        DURATION_ONCE, DURATION_30s, DURATION_5m,
-        DURATION_15m, DURATION_30m, DURATION_1h,
-        DURATION_12h,
-        DURATION_UNTIL_RESTART]
+    RULES_TEMPORARY_LIST = list(DEFAULT_DURATION_OPTIONS[:-1])
+    CUSTOM_DURATIONS_KEY = "global/custom_durations"
 
     DEFAULT_DURATION_IDX = 6 # until restart
 
@@ -226,23 +230,75 @@ class Config:
         else:
             return self.ACTION_DENY
 
+    def get_duration_options(self):
+        """Return configured durations, ensuring mandatory entries and sane order."""
+        durations = []
+        stored = self.getSettings(self.CUSTOM_DURATIONS_KEY)
+        if stored:
+            try:
+                if isinstance(stored, str) and stored.strip().startswith("["):
+                    import json
+                    durations = json.loads(stored)
+                elif isinstance(stored, (list, tuple)):
+                    durations = list(stored)
+                else:
+                    durations = [d.strip() for d in str(stored).split(",")]
+            except Exception:
+                durations = []
+
+        if len(durations) == 0:
+            durations = list(self.DEFAULT_DURATION_OPTIONS)
+
+        cleaned = []
+        for d in durations:
+            if d is None:
+                continue
+            val = str(d).strip()
+            if val == "":
+                continue
+            if val not in cleaned:
+                cleaned.append(val)
+
+        required_first = [self.DURATION_ONCE]
+        required_last = [self.DURATION_UNTIL_RESTART, self.DURATION_ALWAYS]
+
+        result = []
+        for req in required_first:
+            if req not in result:
+                result.append(req)
+
+        for item in cleaned:
+            if item in required_first or item in required_last:
+                continue
+            result.append(item)
+
+        for req in required_last:
+            if req not in result:
+                result.append(req)
+
+        Config.RULES_TEMPORARY_LIST = [d for d in result if d != self.DURATION_ALWAYS]
+        return result
+
+    def normalize_duration_index(self, idx):
+        opts = self.get_duration_options()
+        if idx is None:
+            return 0
+        try:
+            idx = int(idx)
+        except Exception:
+            return 0
+        if idx < 0:
+            return 0
+        if idx >= len(opts):
+            return len(opts) - 1
+        return idx
+
     def setRulesDurationFilter(self, ignore_temporary_rules=False, temp_rules=1):
         try:
             if ignore_temporary_rules:
-                Config.RULES_DURATION_FILTER = [
-                    Config.DURATION_ONCE, Config.DURATION_30s, Config.DURATION_5m,
-                    Config.DURATION_15m, Config.DURATION_30m, Config.DURATION_1h,
-                    Config.DURATION_12h,
-                    Config.DURATION_UNTIL_RESTART]
-
-                Config.RULES_DURATION_FILTER = [
-                    rule for rule in Config.RULES_TEMPORARY_LIST
-                    if Config.RULES_TEMPORARY_LIST.index(rule) < temp_rules
-                ]
-                Config.RULES_ACTIVE_TEMPORARY_RULES = [
-                    rule for rule in Config.RULES_TEMPORARY_LIST
-                    if Config.RULES_TEMPORARY_LIST.index(rule) >= temp_rules
-                ]
+                opts = Config.RULES_TEMPORARY_LIST
+                Config.RULES_DURATION_FILTER = [rule for rule in opts if opts.index(rule) < temp_rules]
+                Config.RULES_ACTIVE_TEMPORARY_RULES = [rule for rule in opts if opts.index(rule) >= temp_rules]
                 #print("Temp rules preserved (RULES_DURATION_FILTER):", Config.RULES_DURATION_FILTER)
                 #print("Temp rules to delete (ACTIVE_TEMPORARY_RULES):", Config.RULES_ACTIVE_TEMPORARY_RULES)
 

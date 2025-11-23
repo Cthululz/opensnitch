@@ -483,6 +483,7 @@ class PromptDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
         self._add_dst_networks_to_combo(self.whatIPCombo, con.dst_ip)
 
         self._default_action = self._cfg.getInt(self._cfg.DEFAULT_ACTION_KEY)
+        _utils.populate_duration_combo(self._cfg, self.durationCombo)
         _utils.set_default_duration(self._cfg, self.durationCombo)
 
         _utils.set_default_target(self.whatCombo, con, self._cfg, app_name, app_args)
@@ -599,7 +600,7 @@ class PromptDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
             self._rule = ui_pb2.Rule(name="user.choice")
             self._rule.created = int(datetime.now().timestamp())
             self._rule.enabled = True
-            self._rule.duration = _utils.get_duration(self.durationCombo.currentIndex())
+            self._rule.duration = _utils.get_duration(self._cfg, self.durationCombo.currentIndex())
 
             self._rule.action = Config.ACTION_ALLOW
             if self._default_action == Config.ACTION_DENY_IDX:

@@ -1225,13 +1225,16 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
             _actReject = actionMenu.addAction(QC.translate("stats", "Reject"))
             menu.addMenu(actionMenu)
 
-            _durAlways = durMenu.addAction(QC.translate("stats", "Always"))
-            _durUntilReboot = durMenu.addAction(QC.translate("stats", "Until reboot"))
-            _dur12h = durMenu.addAction(Config.DURATION_12h)
-            _dur1h = durMenu.addAction(Config.DURATION_1h)
-            _dur30m = durMenu.addAction(Config.DURATION_30m)
-            _dur15m = durMenu.addAction(Config.DURATION_15m)
-            _dur5m = durMenu.addAction(Config.DURATION_5m)
+            dur_actions = []
+            for d in Config.get().get_duration_options():
+                label = d
+                if d == Config.DURATION_ALWAYS:
+                    label = QC.translate("stats", "Always")
+                elif d == Config.DURATION_UNTIL_RESTART:
+                    label = QC.translate("stats", "Until reboot")
+                act = durMenu.addAction(label)
+                act.setData(d)
+                dur_actions.append(act)
             menu.addMenu(durMenu)
 
             is_rule_enabled = True
@@ -1283,20 +1286,8 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
                 self._table_menu_enable(cur_idx, model, selection, is_rule_enabled)
             elif action == _menu_duplicate:
                 self._table_menu_duplicate(cur_idx, model, selection)
-            elif action == _durAlways:
-                self._table_menu_change_rule_field(cur_idx, model, selection, "duration", Config.DURATION_ALWAYS)
-            elif action == _dur12h:
-                self._table_menu_change_rule_field(cur_idx, model, selection, "duration", Config.DURATION_12h)
-            elif action == _dur1h:
-                self._table_menu_change_rule_field(cur_idx, model, selection, "duration", Config.DURATION_1h)
-            elif action == _dur30m:
-                self._table_menu_change_rule_field(cur_idx, model, selection, "duration", Config.DURATION_30m)
-            elif action == _dur15m:
-                self._table_menu_change_rule_field(cur_idx, model, selection, "duration", Config.DURATION_15m)
-            elif action == _dur5m:
-                self._table_menu_change_rule_field(cur_idx, model, selection, "duration", Config.DURATION_5m)
-            elif action == _durUntilReboot:
-                self._table_menu_change_rule_field(cur_idx, model, selection, "duration", Config.DURATION_UNTIL_RESTART)
+            elif action in dur_actions:
+                self._table_menu_change_rule_field(cur_idx, model, selection, "duration", action.data())
             elif action == _actAllow:
                 self._table_menu_change_rule_field(cur_idx, model, selection, "action", Config.ACTION_ALLOW)
             elif action == _actDeny:

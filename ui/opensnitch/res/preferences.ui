@@ -281,13 +281,30 @@
                <string>forever</string>
               </property>
              </item>
-            </widget>
-           </item>
-           <item row="2" column="0">
-            <widget class="QLabel" name="label_5">
-             <property name="text">
-              <string>Default target</string>
-             </property>
+           </widget>
+          </item>
+          <item row="17" column="0">
+           <widget class="QLabel" name="labelCustomDurations">
+            <property name="toolTip">
+             <string>Comma-separated durations (e.g. 30s,5m,2h). “once”, “until restart” and “always” are enforced.</string>
+            </property>
+            <property name="text">
+             <string>Custom durations</string>
+            </property>
+           </widget>
+          </item>
+          <item row="17" column="1">
+           <widget class="QLineEdit" name="lineCustomDurations">
+            <property name="placeholderText">
+             <string>e.g. 30s,5m,2h</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="0">
+           <widget class="QLabel" name="label_5">
+            <property name="text">
+             <string>Default target</string>
+            </property>
             </widget>
            </item>
            <item row="2" column="1">
