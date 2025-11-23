@@ -687,6 +687,8 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
                 order_by="2",
                 sort_direction=self.SORT_ORDER[0],
                 tracking_column=self.COL_R_NAME)
+        # expose timeleft column index for on-the-fly computation
+        self.TABLES[self.TAB_RULES]['view'].model().timeleft_index = self.COL_R_TIMELEFT
         # make rules header configurable
         rules_header = self.rulesTable.horizontalHeader()
         rules_header.setStretchLastSection(False)
