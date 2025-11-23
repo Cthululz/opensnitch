@@ -25,6 +25,7 @@ from opensnitch.customwidgets.generictableview import GenericTableModel
 from opensnitch.customwidgets.addresstablemodel import AddressTableModel
 from opensnitch.customwidgets.netstattablemodel import NetstatTableModel
 from opensnitch.utils import Message, QuickHelp, AsnDB, Icons
+from opensnitch.utils.duration import to_seconds
 from opensnitch.utils.infowindow import InfoWindow
 from opensnitch.utils.xdg import xdg_current_desktop
 from opensnitch.actions import Actions
@@ -44,6 +45,7 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
     _shown_trigger = QtCore.pyqtSignal()
     _notification_trigger = QtCore.pyqtSignal(ui_pb2.Notification)
     _notification_callback = QtCore.pyqtSignal(str, ui_pb2.NotificationReply)
+    _timeleft_timer = None
 
     SORT_ORDER = ["ASC", "DESC"]
     LIMITS = ["LIMIT 50", "LIMIT 100", "LIMIT 200", "LIMIT 300", ""]
@@ -89,6 +91,8 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
     COL_R_OP_TYPE = 6
     COL_R_OP_OPERAND = 7
     COL_R_CREATED = 8
+    COL_R_TIMELEFT = 9
+    COL_R_TIMELEFT = 9
 
     # alerts
     COL_ALERT_TYPE = 2
@@ -101,6 +105,10 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
 
     CLEAR_APP = "app"
     CLEAR_DST = "dst"
+    FILTER_RULES_ALL = 0
+    FILTER_RULES_PERM = 1
+    FILTER_RULES_TEMP_ACTIVE = 2
+    FILTER_RULES_TEMP_EXPIRED = 3
 
     # netstat
     COL_NET_COMM = 0
@@ -235,7 +243,8 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
                     "action as Action," \
                     "duration as Duration," \
                     "description as Description, " \
-                    "created as Created",
+                    "created as Created, " \
+                    "'' as TimeLeft",
             "header_labels": [],
             "last_order_by": "2",
             "last_order_to": 0,
@@ -443,6 +452,11 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
         self._actions = Actions().instance()
         self._action_list = self._actions.getByType(PluginBase.TYPE_MAIN_DIALOG)
         self._last_update = datetime.datetime.now()
+        self._rules_filter_mode = self.FILTER_RULES_ALL
+        self._timeleft_timer = QtCore.QTimer(self)
+        self._timeleft_timer.setInterval(5000)
+        self._timeleft_timer.timeout.connect(self._update_timeleft_column)
+        self._timeleft_timer.start()
 
         # TODO: allow to display multiples dialogs
         self._proc_details_dialog = ProcessDetailsDialog(appicon=appicon)
@@ -593,6 +607,7 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
             self.COL_STR_DURATION,
             self.COL_STR_DESCRIPTION,
             self.COL_STR_CREATED,
+            QC.translate("stats", "Time left"),
         ]
 
         self.TABLES[self.TAB_ALERTS]['header_labels'] = [
@@ -1216,12 +1231,29 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
             actionMenu = QtWidgets.QMenu(self.COL_STR_ACTION)
             nodesMenu = QtWidgets.QMenu(QC.translate("stats", "Apply to"))
             exportMenu = QtWidgets.QMenu(QC.translate("stats", "Export"))
+            filterMenu = QtWidgets.QMenu(QC.translate("stats", "Filter rules"))
 
             nodes_menu = []
             if self._nodes.count() > 0:
                 for node in self._nodes.get_nodes():
                     nodes_menu.append([nodesMenu.addAction(node), node])
                 menu.addMenu(nodesMenu)
+            # filter submenu
+            _filter_all = filterMenu.addAction(QC.translate("stats", "All"))
+            _filter_perm = filterMenu.addAction(QC.translate("stats", "Permanent"))
+            _filter_temp_active = filterMenu.addAction(QC.translate("stats", "Temporary (active)"))
+            _filter_temp_expired = filterMenu.addAction(QC.translate("stats", "Temporary (expired)"))
+            for act in (_filter_all, _filter_perm, _filter_temp_active, _filter_temp_expired):
+                act.setCheckable(True)
+            if self._rules_filter_mode == self.FILTER_RULES_ALL:
+                _filter_all.setChecked(True)
+            elif self._rules_filter_mode == self.FILTER_RULES_PERM:
+                _filter_perm.setChecked(True)
+            elif self._rules_filter_mode == self.FILTER_RULES_TEMP_ACTIVE:
+                _filter_temp_active.setChecked(True)
+            elif self._rules_filter_mode == self.FILTER_RULES_TEMP_EXPIRED:
+                _filter_temp_expired.setChecked(True)
+            menu.addMenu(filterMenu)
 
             _actAllow = actionMenu.addAction(QC.translate("stats", "Allow"))
             _actDeny = actionMenu.addAction(QC.translate("stats", "Deny"))
@@ -1311,6 +1343,14 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
                 self._clear_temp_rules_by_scope(selection[0][self.COL_R_NODE], self.CLEAR_APP)
             elif action == _menu_clear_dst:
                 self._clear_temp_rules_by_scope(selection[0][self.COL_R_NODE], self.CLEAR_DST)
+            elif action == _filter_all:
+                self._set_rules_filter_mode(self.FILTER_RULES_ALL)
+            elif action == _filter_perm:
+                self._set_rules_filter_mode(self.FILTER_RULES_PERM)
+            elif action == _filter_temp_active:
+                self._set_rules_filter_mode(self.FILTER_RULES_TEMP_ACTIVE)
+            elif action == _filter_temp_expired:
+                self._set_rules_filter_mode(self.FILTER_RULES_TEMP_EXPIRED)
             elif action in dur_actions:
                 self._table_menu_change_rule_field(cur_idx, model, selection, "duration", action.data())
             elif action == _actAllow:
@@ -2547,19 +2587,27 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
         return records
 
     def _get_filter_line_clause(self, idx, text):
-        if text == "":
-            return ""
+        conditions = []
 
         if idx == StatsDialog.TAB_RULES:
-            return " WHERE rules.name LIKE '%{0}%' OR rules.operator_data LIKE '%{1}%' ".format(text, text)
+            if text != "":
+                conditions.append("(rules.name LIKE '%{0}%' OR rules.operator_data LIKE '%{1}%')".format(text, text))
+            if self._rules_filter_mode == self.FILTER_RULES_PERM:
+                conditions.append("(duration IN ('{0}','{1}'))".format(Config.DURATION_ALWAYS, Config.DURATION_UNTIL_RESTART))
+            elif self._rules_filter_mode == self.FILTER_RULES_TEMP_ACTIVE:
+                conditions.append("(duration NOT IN ('{0}','{1}') AND enabled='True')".format(Config.DURATION_ALWAYS, Config.DURATION_UNTIL_RESTART))
+            elif self._rules_filter_mode == self.FILTER_RULES_TEMP_EXPIRED:
+                conditions.append("(duration NOT IN ('{0}','{1}') AND enabled='False')".format(Config.DURATION_ALWAYS, Config.DURATION_UNTIL_RESTART))
         elif idx == StatsDialog.TAB_HOSTS or \
             idx == StatsDialog.TAB_PROCS or \
             idx == StatsDialog.TAB_ADDRS or \
             idx == StatsDialog.TAB_PORTS or \
             idx == StatsDialog.TAB_USERS:
-            return " WHERE what LIKE '%{0}%' ".format(text)
+            if text != "":
+                conditions.append("what LIKE '%{0}%' ".format(text))
         elif idx == StatsDialog.TAB_NETSTAT:
-            return " WHERE proc_comm LIKE '%{0}%' OR" \
+            if text != "":
+                conditions.append("(proc_comm LIKE '%{0}%' OR" \
                 " proc_path LIKE '%{0}%' OR" \
                 " state LIKE '%{0}%' OR" \
                 " src_port LIKE '%{0}%' OR" \
@@ -2571,9 +2619,11 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
                 " proc_pid LIKE '%{0}%' OR" \
                 " family LIKE '%{0}%' OR" \
                 " iface LIKE '%{0}%' OR" \
-                " inode LIKE '%{0}%'".format(text)
+                " inode LIKE '%{0}%')".format(text))
 
-        return ""
+        if len(conditions) == 0:
+            return ""
+        return " WHERE " + " AND ".join(conditions)
 
     def _get_limit(self):
         return " " + self.LIMITS[self.limitCombo.currentIndex()]
@@ -2585,6 +2635,69 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
            order_field  = field
         return " ORDER BY %s %s" % (order_field, self.SORT_ORDER[self.TABLES[cur_idx]['last_order_to']])
 
+    def _set_rules_filter_mode(self, mode):
+        self._rules_filter_mode = mode
+        self._refresh_active_table()
+
+    def _is_permanent_duration(self, dur):
+        return dur in (Config.DURATION_ALWAYS, Config.DURATION_UNTIL_RESTART)
+
+    def _format_timeleft(self, secs):
+        if secs <= 0:
+            return QC.translate("stats", "expired")
+        if secs < 60:
+            return "<1m"
+        mins = int(secs // 60)
+        hours = mins // 60
+        mins = mins % 60
+        if hours == 0:
+            return "{0}m".format(mins)
+        return "{0}h {1}m".format(hours, mins)
+
+    def _compute_timeleft(self, row):
+        try:
+            enabled = row[self.COL_R_ENABLED]
+            dur = row[self.COL_R_DURATION]
+            created = row[self.COL_R_CREATED]
+            if self._is_permanent_duration(dur):
+                return "—"
+            if str(enabled) == "False":
+                return QC.translate("stats", "expired")
+            if dur == Config.DURATION_ONCE:
+                return "<1m"
+
+            secs = to_seconds(dur)
+            if secs <= 0:
+                return ""
+            created_dt = datetime.datetime.strptime(created, "%Y-%m-%d %H:%M:%S")
+            remaining = (created_dt + datetime.timedelta(seconds=secs)) - datetime.datetime.now()
+            return self._format_timeleft(int(remaining.total_seconds()))
+        except Exception:
+            return ""
+
+    def _update_timeleft_column(self):
+        if self.tabWidget.currentIndex() != self.TAB_RULES or not self.rulesTable.isVisible():
+            return
+        model = self.rulesTable.model()
+        try:
+            items = getattr(model, "items", [])
+        except Exception:
+            return
+        if items is None or len(items) == 0:
+            return
+        changed = False
+        for idx, row in enumerate(items):
+            if len(row) <= self.COL_R_TIMELEFT:
+                continue
+            val = self._compute_timeleft(row)
+            if row[self.COL_R_TIMELEFT] != val:
+                row[self.COL_R_TIMELEFT] = val
+                changed = True
+        if changed:
+            top_left = model.createIndex(0, self.COL_R_TIMELEFT)
+            bottom_right = model.createIndex(len(items)-1, self.COL_R_TIMELEFT)
+            model.dataChanged.emit(top_left, bottom_right)
+
     def _refresh_active_table(self):
         cur_idx = self.tabWidget.currentIndex()
         model = self._get_active_table().model()
@@ -2593,6 +2706,8 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
             lastQuery += self._get_limit()
         self.setQuery(model, lastQuery)
         self.TABLES[cur_idx]['view'].refresh()
+        if cur_idx == self.TAB_RULES:
+            self._update_timeleft_column()
 
     def _get_active_table(self):
         if self.tabWidget.currentIndex() == self.TAB_RULES and self.fwTable.isVisible():
