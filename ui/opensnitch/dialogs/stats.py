@@ -2731,6 +2731,7 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
             try:
                 items = getattr(model, "items", [])
                 if items and len(items) > 0:
+                    print("[timeleft debug] header:", getattr(model, "headerLabels", None))
                     print("[timeleft debug] first row:", items[0])
             except Exception:
                 pass
