@@ -1935,6 +1935,11 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
                 where_clause + self._get_order()
             if text == "":
                 qstr = qstr + self._get_limit()
+            if cur_idx == StatsDialog.TAB_RULES:
+                # force refresh TimeLeft column after applying filter
+                self.setQuery(model, qstr)
+                self._update_timeleft_column()
+                return
 
         if qstr != None:
             self.setQuery(model, qstr)
@@ -2705,13 +2710,24 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
     def _refresh_active_table(self):
         cur_idx = self.tabWidget.currentIndex()
         model = self._get_active_table().model()
+        if cur_idx == self.TAB_RULES:
+            filter_text = ""
+            if self.TABLES[cur_idx]['filterLine'] != None:
+                filter_text = self.TABLES[cur_idx]['filterLine'].text()
+            where_clause = self._get_filter_line_clause(cur_idx, filter_text)
+            qstr = self._db.get_query(self.TABLES[cur_idx]['name'], self.TABLES[cur_idx]['display_fields']) + where_clause + self._get_order()
+            if filter_text == "":
+                qstr += self._get_limit()
+            self.setQuery(model, qstr)
+            self.TABLES[cur_idx]['view'].refresh()
+            self._update_timeleft_column()
+            return
+
         lastQuery = model.query().lastQuery()
         if "LIMIT" not in lastQuery:
             lastQuery += self._get_limit()
         self.setQuery(model, lastQuery)
         self.TABLES[cur_idx]['view'].refresh()
-        if cur_idx == self.TAB_RULES:
-            self._update_timeleft_column()
 
     def _get_active_table(self):
         if self.tabWidget.currentIndex() == self.TAB_RULES and self.fwTable.isVisible():
