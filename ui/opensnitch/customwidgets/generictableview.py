@@ -82,45 +82,6 @@ class GenericTableModel(QStandardItemModel):
         if role == Qt.ItemDataRole.DisplayRole or role == Qt.ItemDataRole.EditRole:
             items_count = len(self.items)
             if index.isValid() and items_count > 0 and index.row() < items_count:
-                # on-the-fly timeleft for rules table if configured
-                if self.timeleft_index is not None and index.column() == self.timeleft_index:
-                    try:
-                        row = self.items[index.row()]
-                        dur_idx = self.duration_index if self.duration_index is not None else self.timeleft_index - 1
-                        en_idx = self.enabled_index if self.enabled_index is not None else max(0, self.timeleft_index - 3)
-                        cr_idx = self.created_index if self.created_index is not None else len(row) - 1
-
-                        dur = str(row[dur_idx]).strip() if dur_idx < len(row) else ""
-                        enabled_raw = str(row[en_idx]).strip().lower() if en_idx < len(row) else ""
-                        enabled = enabled_raw not in ("false", "0", "no")
-                        created = row[cr_idx] if cr_idx < len(row) else ""
-                        if dur in ("always", "until restart"):
-                            return "—"
-                        if not enabled:
-                            return "expired"
-                        if dur == "once":
-                            return "<1m"
-                        secs = to_seconds(dur)
-                        if secs <= 0:
-                            return "expired"
-                        try:
-                            created_dt = datetime.datetime.fromisoformat(str(created).replace("Z", ""))
-                        except Exception:
-                            created_dt = datetime.datetime.fromtimestamp(int(created)) if str(created).isdigit() else datetime.datetime.now()
-                        remaining = (created_dt + datetime.timedelta(seconds=secs)) - datetime.datetime.now()
-                        rsecs = int(remaining.total_seconds())
-                        if rsecs <= 0:
-                            return "expired"
-                        if rsecs < 60:
-                            return "<1m"
-                        mins = rsecs // 60
-                        hours = mins // 60
-                        mins = mins % 60
-                        if hours == 0:
-                            return f"{mins}m"
-                        return f"{hours}h {mins}m"
-                    except Exception:
-                        return "—"
                 return self.items[index.row()][index.column()]
         return QStandardItemModel.data(self, index, role)
 
