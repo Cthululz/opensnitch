@@ -1252,6 +1252,7 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
             _menu_duplicate = menu.addAction(QC.translate("stats", "Duplicate"))
             _menu_edit = menu.addAction(QC.translate("stats", "Edit"))
             _menu_delete = menu.addAction(QC.translate("stats", "Delete"))
+            _menu_clear_expired = menu.addAction(QC.translate("stats", "Clear expired temporary rules"))
 
             menu.addSeparator()
             _toClipboard = exportMenu.addAction(QC.translate("stats", "To clipboard"))
@@ -1286,6 +1287,8 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
                 self._table_menu_enable(cur_idx, model, selection, is_rule_enabled)
             elif action == _menu_duplicate:
                 self._table_menu_duplicate(cur_idx, model, selection)
+            elif action == _menu_clear_expired:
+                self._clear_expired_temp_rules()
             elif action in dur_actions:
                 self._table_menu_change_rule_field(cur_idx, model, selection, "duration", action.data())
             elif action == _actAllow:
@@ -1304,6 +1307,17 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
         finally:
             self._clear_rows_selection()
             return True
+
+    def _clear_expired_temp_rules(self):
+        expired = self._rules.get_expired_temp_rules()
+        if len(expired) == 0:
+            return
+        for name, node in expired:
+            try:
+                self._nodes.delete_rule(name, node, self._notification_callback)
+            except Exception as e:
+                print("clear_expired_temp_rules error:", e)
+        self._rules.updated.emit(0)
 
     def _configure_alerts_contextual_menu(self, pos):
         try:

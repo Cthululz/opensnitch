@@ -1,4 +1,5 @@
 from PyQt6.QtCore import QObject, pyqtSignal
+from PyQt6.QtSql import QSqlQuery
 
 from opensnitch.database import Database
 from opensnitch.database.enums import RuleFields
@@ -89,6 +90,7 @@ class Rules(QObject):
     def __init__(self):
         QObject.__init__(self)
         self._db = Database.instance()
+        self._db_conn = self._db.get_db()
 
     def add(self, time, node, name, description, enabled, precedence, nolog, action, duration, op_type, op_sensitive, op_operand, op_data, created):
         # don't add rule if the user has selected to exclude temporary
@@ -185,6 +187,22 @@ class Rules(QObject):
                         "name=? AND node=?",
                         action_on_conflict="OR REPLACE"
                         )
+
+    def get_expired_temp_rules(self):
+        """Return list of (name, node) for disabled temp rules."""
+        qstr = "SELECT name, node FROM rules WHERE enabled='False' AND duration != ? AND duration != ?"
+        expired = []
+        with self._db._lock:
+            q = QSqlQuery(qstr, self._db_conn)
+            q.prepare(qstr)
+            q.addBindValue(Config.DURATION_ALWAYS)
+            q.addBindValue(Config.DURATION_UNTIL_RESTART)
+            if q.exec():
+                while q.next():
+                    expired.append((q.value(0), q.value(1)))
+            else:
+                print("get_expired_temp_rules() error:", q.lastError().driverText())
+        return expired
 
     def _timestamp_to_rfc3339(self, time):
         """converts timestamp to rfc3339 format"""
