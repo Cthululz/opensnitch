@@ -88,9 +88,9 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
     COL_R_ENABLED = 3
     COL_R_ACTION = 4
     COL_R_DURATION = 5
-    COL_R_DESCRIPTION = 6
-    COL_R_CREATED = 7
-    COL_R_TIMELEFT = 8
+    COL_R_TIMELEFT = 6
+    COL_R_DESCRIPTION = 7
+    COL_R_CREATED = 8
     COL_R_TIMELEFT = 9
 
     # alerts
@@ -241,9 +241,9 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
                     "enabled as Enabled," \
                     "action as Action," \
                     "duration as Duration," \
+                    "'' as TimeLeft," \
                     "description as Description, " \
-                    "created as Created, " \
-                    "'' as TimeLeft",
+                    "created as Created",
             "header_labels": [],
             "last_order_by": "2",
             "last_order_to": 0,
@@ -604,9 +604,9 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
             self.COL_STR_ENABLED,
             self.COL_STR_ACTION,
             self.COL_STR_DURATION,
+            QC.translate("stats", "Time left"),
             self.COL_STR_DESCRIPTION,
             self.COL_STR_CREATED,
-            QC.translate("stats", "Time left"),
         ]
 
         self.TABLES[self.TAB_ALERTS]['header_labels'] = [
@@ -2649,7 +2649,7 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
         self._refresh_active_table()
 
     def _is_permanent_duration(self, dur):
-        return dur in (Config.DURATION_ALWAYS, Config.DURATION_UNTIL_RESTART)
+        return str(dur).strip() in (Config.DURATION_ALWAYS, Config.DURATION_UNTIL_RESTART)
 
     def _format_timeleft(self, secs):
         if secs <= 0:
@@ -2665,12 +2665,13 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
 
     def _compute_timeleft(self, row):
         try:
-            enabled = row[self.COL_R_ENABLED]
-            dur = row[self.COL_R_DURATION]
+            enabled_raw = str(row[self.COL_R_ENABLED]).strip().lower()
+            enabled = enabled_raw not in ("false", "0", "no")
+            dur = str(row[self.COL_R_DURATION]).strip()
             created = row[self.COL_R_CREATED]
             if self._is_permanent_duration(dur):
                 return "—"
-            if str(enabled) == "False":
+            if not enabled:
                 return QC.translate("stats", "expired")
             if dur == Config.DURATION_ONCE:
                 return "<1m"
@@ -2678,7 +2679,10 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
             secs = to_seconds(dur)
             if secs <= 0:
                 return ""
-            created_dt = datetime.datetime.strptime(created, "%Y-%m-%d %H:%M:%S")
+            try:
+                created_dt = datetime.datetime.strptime(created, "%Y-%m-%d %H:%M:%S")
+            except Exception:
+                created_dt = datetime.datetime.fromtimestamp(int(created)) if str(created).isdigit() else datetime.datetime.now()
             remaining = (created_dt + datetime.timedelta(seconds=secs)) - datetime.datetime.now()
             return self._format_timeleft(int(remaining.total_seconds()))
         except Exception:
