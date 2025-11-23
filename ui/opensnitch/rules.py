@@ -204,6 +204,25 @@ class Rules(QObject):
                 print("get_expired_temp_rules() error:", q.lastError().driverText())
         return expired
 
+    def get_temp_rules_by_operand(self, node, operand, data):
+        """Return (name, node) for temporary rules matching operand/data."""
+        qstr = "SELECT name, node FROM rules WHERE node=? AND operator_operand=? AND operator_data=? AND duration != ? AND duration != ?"
+        matches = []
+        with self._db._lock:
+            q = QSqlQuery(qstr, self._db_conn)
+            q.prepare(qstr)
+            q.addBindValue(node)
+            q.addBindValue(operand)
+            q.addBindValue(data)
+            q.addBindValue(Config.DURATION_ALWAYS)
+            q.addBindValue(Config.DURATION_UNTIL_RESTART)
+            if q.exec():
+                while q.next():
+                    matches.append((q.value(0), q.value(1)))
+            else:
+                print("get_temp_rules_by_operand() error:", q.lastError().driverText())
+        return matches
+
     def _timestamp_to_rfc3339(self, time):
         """converts timestamp to rfc3339 format"""
         return "{0}Z".format(

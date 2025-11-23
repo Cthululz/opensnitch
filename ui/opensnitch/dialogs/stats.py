@@ -13,7 +13,7 @@ from opensnitch.config import Config
 from opensnitch.version import version
 from opensnitch.nodes import Nodes
 from opensnitch.firewall import Firewall, Rules as FwRules
-from opensnitch.database.enums import AlertFields
+from opensnitch.database.enums import AlertFields, RuleFields
 from opensnitch.dialogs.firewall import FirewallDialog
 from opensnitch.dialogs.preferences import PreferencesDialog
 from opensnitch.dialogs.ruleseditor import RulesEditorDialog
@@ -98,6 +98,9 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
 
     # procs
     COL_PROC_PID = 11
+
+    CLEAR_APP = "app"
+    CLEAR_DST = "dst"
 
     # netstat
     COL_NET_COMM = 0
@@ -1254,6 +1257,20 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
             _menu_delete = menu.addAction(QC.translate("stats", "Delete"))
             _menu_clear_expired = menu.addAction(QC.translate("stats", "Clear expired temporary rules"))
 
+            # scoped clear options
+            _menu_clear_app = None
+            _menu_clear_dst = None
+            if selection and len(selection) > 0:
+                node_addr = selection[0][self.COL_R_NODE]
+                rule_name = selection[0][self.COL_R_NAME]
+                rec = self._get_rule(rule_name, node_addr)
+                if rec is not None:
+                    operand = rec.value(RuleFields.OpOperand)
+                    if operand in (Config.OPERAND_PROCESS_PATH, Config.OPERAND_PROCESS_COMMAND, Config.OPERAND_PROCESS_ID):
+                        _menu_clear_app = menu.addAction(QC.translate("stats", "Clear timed rules for this application"))
+                    if operand in (Config.OPERAND_DEST_IP, Config.OPERAND_DEST_HOST, Config.OPERAND_DEST_PORT, Config.OPERAND_DEST_NETWORK):
+                        _menu_clear_dst = menu.addAction(QC.translate("stats", "Clear timed rules for this destination"))
+
             menu.addSeparator()
             _toClipboard = exportMenu.addAction(QC.translate("stats", "To clipboard"))
             _toDisk = exportMenu.addAction(QC.translate("stats", "To disk"))
@@ -1289,6 +1306,10 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
                 self._table_menu_duplicate(cur_idx, model, selection)
             elif action == _menu_clear_expired:
                 self._clear_expired_temp_rules()
+            elif action == _menu_clear_app:
+                self._clear_temp_rules_by_scope(selection[0][self.COL_R_NODE], self.CLEAR_APP)
+            elif action == _menu_clear_dst:
+                self._clear_temp_rules_by_scope(selection[0][self.COL_R_NODE], self.CLEAR_DST)
             elif action in dur_actions:
                 self._table_menu_change_rule_field(cur_idx, model, selection, "duration", action.data())
             elif action == _actAllow:
@@ -1317,6 +1338,33 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
                 self._nodes.delete_rule(name, node, self._notification_callback)
             except Exception as e:
                 print("clear_expired_temp_rules error:", e)
+        self._rules.updated.emit(0)
+
+    def _clear_temp_rules_by_scope(self, node_addr, scope):
+        selection = self.rulesTable.selectedRows()
+        if not selection:
+            return
+        rule_name = selection[0][self.COL_R_NAME]
+        rec = self._get_rule(rule_name, node_addr)
+        if rec is None:
+            return
+        operand = rec.value(RuleFields.OpOperand)
+        data = rec.value(RuleFields.OpData)
+
+        # guard: ensure scope matches operand
+        if scope == self.CLEAR_APP and operand not in (Config.OPERAND_PROCESS_PATH, Config.OPERAND_PROCESS_COMMAND, Config.OPERAND_PROCESS_ID):
+            return
+        if scope == self.CLEAR_DST and operand not in (Config.OPERAND_DEST_IP, Config.OPERAND_DEST_HOST, Config.OPERAND_DEST_PORT, Config.OPERAND_DEST_NETWORK):
+            return
+
+        matches = self._rules.get_temp_rules_by_operand(node_addr, operand, data)
+        if len(matches) == 0:
+            return
+        for name, node in matches:
+            try:
+                self._nodes.delete_rule(name, node, self._notification_callback)
+            except Exception as e:
+                print("clear_temp_rules_by_scope error:", e)
         self._rules.updated.emit(0)
 
     def _configure_alerts_contextual_menu(self, pos):
