@@ -2706,6 +2706,11 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
             if len(row) <= self.COL_R_TIMELEFT:
                 continue
             val = self._compute_timeleft(row)
+            if idx < 3:
+                try:
+                    print("[timeleft debug] row:", row, "=>", val)
+                except Exception:
+                    pass
             if row[self.COL_R_TIMELEFT] != val:
                 row[self.COL_R_TIMELEFT] = val
                 changed = True
