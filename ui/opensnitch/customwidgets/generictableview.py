@@ -42,6 +42,11 @@ class GenericTableModel(QStandardItemModel):
         self.lastColumnCount = len(self.headerLabels)
         QStandardItemModel.__init__(self, 0, self.lastColumnCount)
         self.setHorizontalHeaderLabels(self.headerLabels)
+        # optional indices for time-left computation on rules table
+        self.timeleft_index = None
+        self.duration_index = None
+        self.enabled_index = None
+        self.created_index = None
 
     def _clean_text(self, value):
         """Flatten text so long descriptions don't render as stacked lines."""
@@ -77,13 +82,17 @@ class GenericTableModel(QStandardItemModel):
             items_count = len(self.items)
             if index.isValid() and items_count > 0 and index.row() < items_count:
                 # on-the-fly timeleft for rules table if configured
-                if hasattr(self, "timeleft_index") and index.column() == self.timeleft_index:
+                if self.timeleft_index is not None and index.column() == self.timeleft_index:
                     try:
                         row = self.items[index.row()]
-                        dur = str(row[self.timeleft_index - 1]).strip() if self.timeleft_index - 1 < len(row) else ""
-                        enabled_raw = str(row[self.timeleft_index - 2]).strip().lower() if self.timeleft_index - 2 < len(row) else ""
+                        dur_idx = self.duration_index if self.duration_index is not None else self.timeleft_index - 1
+                        en_idx = self.enabled_index if self.enabled_index is not None else max(0, self.timeleft_index - 3)
+                        cr_idx = self.created_index if self.created_index is not None else len(row) - 1
+
+                        dur = str(row[dur_idx]).strip() if dur_idx < len(row) else ""
+                        enabled_raw = str(row[en_idx]).strip().lower() if en_idx < len(row) else ""
                         enabled = enabled_raw not in ("false", "0", "no")
-                        created = row[-1] if len(row) > 0 else ""
+                        created = row[cr_idx] if cr_idx < len(row) else ""
                         if dur in ("always", "until restart"):
                             return "—"
                         if not enabled:
@@ -94,7 +103,7 @@ class GenericTableModel(QStandardItemModel):
                         if secs <= 0:
                             return "expired"
                         try:
-                            created_dt = datetime.datetime.strptime(str(created), "%Y-%m-%d %H:%M:%S")
+                            created_dt = datetime.datetime.fromisoformat(str(created).replace("Z", ""))
                         except Exception:
                             created_dt = datetime.datetime.fromtimestamp(int(created)) if str(created).isdigit() else datetime.datetime.now()
                         remaining = (created_dt + datetime.timedelta(seconds=secs)) - datetime.datetime.now()
