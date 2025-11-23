@@ -48,6 +48,56 @@ class GenericTableModel(QStandardItemModel):
         self.enabled_index = None
         self.created_index = None
 
+    def _compute_timeleft(self, row):
+        """Compute a display string for remaining time based on row data."""
+        try:
+            dur_idx = self.duration_index if self.duration_index is not None else (self.timeleft_index - 1)
+            en_idx = self.enabled_index if self.enabled_index is not None else max(0, self.timeleft_index - 3)
+            cr_idx = self.created_index if self.created_index is not None else len(row) - 1
+
+            dur = str(row[dur_idx]).strip() if dur_idx < len(row) else ""
+            enabled_raw = str(row[en_idx]).strip().lower() if en_idx < len(row) else ""
+            enabled = enabled_raw not in ("false", "0", "no")
+            created = row[cr_idx] if cr_idx < len(row) else ""
+
+            if dur in ("always", "until restart"):
+                return "—"
+            if not enabled:
+                return "expired"
+            if dur == "once":
+                return "<1m"
+            secs = to_seconds(dur)
+            if secs <= 0:
+                return "expired"
+
+            # parse created
+            cval = str(created)
+            try:
+                if "T" in cval:
+                    created_dt = datetime.datetime.fromisoformat(cval.replace("Z", ""))
+                else:
+                    created_dt = datetime.datetime.strptime(cval, "%Y-%m-%d %H:%M:%S")
+            except Exception:
+                try:
+                    created_dt = datetime.datetime.fromtimestamp(float(cval))
+                except Exception:
+                    created_dt = datetime.datetime.now()
+
+            remaining = (created_dt + datetime.timedelta(seconds=secs)) - datetime.datetime.now()
+            rsecs = int(remaining.total_seconds())
+            if rsecs <= 0:
+                return "expired"
+            if rsecs < 60:
+                return "<1m"
+            mins = rsecs // 60
+            hours = mins // 60
+            mins = mins % 60
+            if hours == 0:
+                return f"{mins}m"
+            return f"{hours}h {mins}m"
+        except Exception:
+            return "—"
+
     def _clean_text(self, value):
         """Flatten text so long descriptions don't render as stacked lines."""
         if value is None:
@@ -220,6 +270,13 @@ class GenericTableModel(QStandardItemModel):
             for col in range(0, len(self.headerLabels)):
                 cols.append(str(q.value(col)))
                 cols[-1] = self._clean_text(cols[-1])
+
+            # compute timeleft column if configured
+            if self.timeleft_index is not None and self.timeleft_index < len(self.headerLabels):
+                # ensure list has enough length
+                while len(cols) < len(self.headerLabels):
+                    cols.append("")
+                cols[self.timeleft_index] = self._compute_timeleft(cols)
 
             self.items.append(cols)
 
