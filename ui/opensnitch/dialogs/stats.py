@@ -2680,7 +2680,7 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
             if secs <= 0:
                 return QC.translate("stats", "expired")
             try:
-                created_dt = datetime.datetime.strptime(created, "%Y-%m-%d %H:%M:%S")
+                created_dt = datetime.datetime.strptime(str(created).split(".")[0], "%Y-%m-%d %H:%M:%S")
             except Exception:
                 try:
                     created_dt = datetime.datetime.fromisoformat(str(created).replace("Z", ""))
