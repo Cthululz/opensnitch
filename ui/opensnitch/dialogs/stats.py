@@ -1255,7 +1255,8 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
             _menu_duplicate = menu.addAction(QC.translate("stats", "Duplicate"))
             _menu_edit = menu.addAction(QC.translate("stats", "Edit"))
             _menu_delete = menu.addAction(QC.translate("stats", "Delete"))
-            _menu_clear_expired = menu.addAction(QC.translate("stats", "Clear expired temporary rules"))
+            menu.addSeparator()
+            _menu_clear_expired = menu.addAction(QC.translate("stats", "Clear expired temp rules"))
 
             # scoped clear options
             _menu_clear_app = None
@@ -1267,9 +1268,9 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
                 if rec is not None:
                     operand = rec.value(RuleFields.OpOperand)
                     if operand in (Config.OPERAND_PROCESS_PATH, Config.OPERAND_PROCESS_COMMAND, Config.OPERAND_PROCESS_ID):
-                        _menu_clear_app = menu.addAction(QC.translate("stats", "Clear timed rules for this application"))
+                        _menu_clear_app = menu.addAction(QC.translate("stats", "Clear temp rules for this app"))
                     if operand in (Config.OPERAND_DEST_IP, Config.OPERAND_DEST_HOST, Config.OPERAND_DEST_PORT, Config.OPERAND_DEST_NETWORK):
-                        _menu_clear_dst = menu.addAction(QC.translate("stats", "Clear timed rules for this destination"))
+                        _menu_clear_dst = menu.addAction(QC.translate("stats", "Clear temp rules for this destination"))
 
             menu.addSeparator()
             _toClipboard = exportMenu.addAction(QC.translate("stats", "To clipboard"))
