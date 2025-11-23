@@ -2706,11 +2706,6 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
             if len(row) <= self.COL_R_TIMELEFT:
                 continue
             val = self._compute_timeleft(row)
-            if idx < 3:
-                try:
-                    print("[timeleft debug] row:", row, "=>", val)
-                except Exception:
-                    pass
             if row[self.COL_R_TIMELEFT] != val:
                 row[self.COL_R_TIMELEFT] = val
                 changed = True
@@ -2733,6 +2728,12 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
             self.setQuery(model, qstr)
             self.TABLES[cur_idx]['view'].refresh()
             self._update_timeleft_column()
+            try:
+                items = getattr(model, "items", [])
+                if items and len(items) > 0:
+                    print("[timeleft debug] first row:", items[0])
+            except Exception:
+                pass
             return
 
         lastQuery = model.query().lastQuery()
