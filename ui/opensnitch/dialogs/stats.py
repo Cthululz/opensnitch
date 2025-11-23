@@ -88,10 +88,9 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
     COL_R_ENABLED = 3
     COL_R_ACTION = 4
     COL_R_DURATION = 5
-    COL_R_OP_TYPE = 6
-    COL_R_OP_OPERAND = 7
-    COL_R_CREATED = 8
-    COL_R_TIMELEFT = 9
+    COL_R_DESCRIPTION = 6
+    COL_R_CREATED = 7
+    COL_R_TIMELEFT = 8
     COL_R_TIMELEFT = 9
 
     # alerts
@@ -688,6 +687,11 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
                 order_by="2",
                 sort_direction=self.SORT_ORDER[0],
                 tracking_column=self.COL_R_NAME)
+        # make rules header configurable
+        rules_header = self.rulesTable.horizontalHeader()
+        rules_header.setStretchLastSection(False)
+        rules_header.setSectionsMovable(True)
+        rules_header.setSectionResizeMode(self.COL_R_TIMELEFT, QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
         self.TABLES[self.TAB_FIREWALL]['view'] = self._setup_table(QtWidgets.QTableView, self.fwTable, "firewall",
                 model=FirewallTableModel("firewall"),
                 verticalScrollBar=None,
