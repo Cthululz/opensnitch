@@ -276,7 +276,13 @@ class GenericTableModel(QStandardItemModel):
                 # ensure list has enough length
                 while len(cols) < len(self.headerLabels):
                     cols.append("")
-                cols[self.timeleft_index] = self._compute_timeleft(cols)
+                tl = self._compute_timeleft(cols)
+                cols[self.timeleft_index] = tl
+                if x == 0:
+                    try:
+                        print("[timeleft debug] row:", cols)
+                    except Exception:
+                        pass
 
             self.items.append(cols)
 
