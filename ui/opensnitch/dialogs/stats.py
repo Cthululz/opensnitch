@@ -1635,9 +1635,8 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
                     # update duration in place; reset timestamps to restart timer
                     rule.duration = value
                     now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                    # created is stored as timestamp in proto, time as string in DB
+                    # created is stored as timestamp in proto
                     rule.created = int(datetime.datetime.strptime(now_str, "%Y-%m-%d %H:%M:%S").timestamp())
-                    rule.time = now_str
                     # update local DB entry
                     self._db.update(
                         table="rules",
