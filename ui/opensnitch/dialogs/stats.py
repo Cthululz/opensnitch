@@ -1603,12 +1603,12 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
                     )
                     rule.created = int(datetime.datetime.strptime(now_str, "%Y-%m-%d %H:%M:%S").timestamp())
                     rule.time = now_str
+                elif field == "precedence":
+                    rule.precedence = value
                 else:
                     self._db.update(table="rules", fields="{0}=?".format(field),
                                     values=[value], condition="name='{0}' AND node='{1}'".format(rule_name, node_addr),
                                     action_on_conflict="")
-                elif field == "precedence":
-                    rule.precedence = value
 
                 noti = ui_pb2.Notification(type=ui_pb2.CHANGE_RULE, rules=[rule])
                 nid = self._nodes.send_notification(node_addr, noti, self._notification_callback)
