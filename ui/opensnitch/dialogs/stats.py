@@ -2832,8 +2832,8 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
                         except Exception:
                             pass
                         ok = self._auto_disable_rule(node_clean, name_clean)
-                        # always track processed to avoid spamming; _auto_disable_rule retries notify
-                        self._expired_processed.add(key)
+                        if ok:
+                            self._expired_processed.add(key)
             except Exception:
                 pass
         if len(items) > 0:
