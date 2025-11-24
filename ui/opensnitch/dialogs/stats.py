@@ -2718,6 +2718,7 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
             return "—"
 
     def _update_timeleft_column(self):
+        # Only update while on the Rules tab to avoid wasting cycles.
         if self.tabWidget.currentIndex() != self.TAB_RULES or not self.rulesTable.isVisible():
             return
         model = self.rulesTable.model()
