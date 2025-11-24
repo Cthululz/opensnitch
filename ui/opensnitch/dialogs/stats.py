@@ -2685,7 +2685,10 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
                 try:
                     created_dt = datetime.datetime.fromisoformat(str(created).replace("Z", ""))
                 except Exception:
-                    created_dt = datetime.datetime.fromtimestamp(float(created)) if str(created).replace(".","",1).isdigit() else datetime.datetime.now()
+                    try:
+                        created_dt = datetime.datetime.strptime(str(row[self.COL_TIME]).split(".")[0], "%Y-%m-%d %H:%M:%S")
+                    except Exception:
+                        created_dt = datetime.datetime.fromtimestamp(float(created)) if str(created).replace(".","",1).isdigit() else datetime.datetime.now()
             remaining = (created_dt + datetime.timedelta(seconds=secs)) - datetime.datetime.now()
             return self._format_timeleft(int(remaining.total_seconds()))
         except Exception:
@@ -2706,11 +2709,10 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
                 continue
             val = self._compute_timeleft(row)
             row[self.COL_R_TIMELEFT] = val
-            # log non-permanent rules
             try:
                 dur = str(row[self.COL_R_DURATION]).strip().lower()
                 if dur not in ("always", "until restart"):
-                    print("[timeleft debug] row:", idx, "name:", row[self.COL_R_NAME], "dur:", row[self.COL_R_DURATION], "enabled:", row[self.COL_R_ENABLED], "created:", row[self.COL_R_CREATED], "=>", val)
+                    print("[timeleft debug] row:", row[self.COL_R_NAME], "dur:", dur, "enabled:", row[self.COL_R_ENABLED], "created:", row[self.COL_R_CREATED], "time:", row[self.COL_TIME], "=>", val)
             except Exception:
                 pass
         top_left = model.createIndex(0, self.COL_R_TIMELEFT)
@@ -2731,13 +2733,6 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
             self.setQuery(model, qstr)
             self.TABLES[cur_idx]['view'].refresh()
             self._update_timeleft_column()
-            try:
-                items = getattr(model, "items", [])
-                if items and len(items) > 0:
-                    print("[timeleft debug] header:", getattr(model, "headerLabels", None))
-                    print("[timeleft debug] first row:", items[0])
-            except Exception:
-                pass
             return
 
         lastQuery = model.query().lastQuery()

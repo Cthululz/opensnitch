@@ -93,11 +93,6 @@ class Rules(QObject):
         self._db_conn = self._db.get_db()
 
     def add(self, time, node, name, description, enabled, precedence, nolog, action, duration, op_type, op_sensitive, op_operand, op_data, created):
-        # don't add rule if the user has selected to exclude temporary
-        # rules
-        if duration in Config.RULES_DURATION_FILTER:
-            return
-
         self._db.insert("rules",
                   "(time, node, name, description, enabled, precedence, nolog, action, duration, operator_type, operator_sensitive, operator_operand, operator_data, created)",
                   (time, node, name, description, enabled, precedence, nolog, action, duration, op_type, op_sensitive, op_operand, op_data, created),

@@ -80,11 +80,6 @@ class Nodes(QObject):
         self._nodes[addr]['fwrules'] = fwconfig
 
     def add_rule(self, time, node, name, description, enabled, precedence, nolog, action, duration, op_type, op_sensitive, op_operand, op_data, created):
-        # don't add rule if the user has selected to exclude temporary
-        # rules
-        if duration in Config.RULES_DURATION_FILTER:
-            return
-
         self._rules.add(time, node, name, description, enabled, precedence, nolog, action, duration, op_type, op_sensitive, op_operand, op_data, created)
 
     def add_rules(self, addr, rules):
