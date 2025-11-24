@@ -2817,7 +2817,9 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
                 key = f"{node_addr}:{rule_name}"
                 if dur not in ("always", "until restart") and enabled_raw not in ("false", "0", "no") and val == QC.translate("stats", "expired"):
                     if key not in self._expired_processed:
-                        ok = self._auto_disable_rule(node_addr, rule_name)
+                        node_clean = str(node_addr).strip() if node_addr is not None else ""
+                        name_clean = str(rule_name).strip() if rule_name is not None else ""
+                        ok = self._auto_disable_rule(node_clean, name_clean)
                         if ok:
                             row[self.COL_R_ENABLED] = "False"
                             self._expired_processed.add(key)
@@ -2839,6 +2841,8 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
     def _auto_disable_rule(self, node_addr, rule_name):
         """Disable an expired temporary rule in DB and daemon. Returns True if applied."""
         try:
+            node_addr = (node_addr or "").strip()
+            rule_name = (rule_name or "").strip()
             rec = self._get_rule(rule_name, node_addr)
             if rec is None:
                 return False
