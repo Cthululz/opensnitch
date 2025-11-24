@@ -2819,10 +2819,21 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
                     if key not in self._expired_processed:
                         node_clean = str(node_addr).strip() if node_addr is not None else ""
                         name_clean = str(rule_name).strip() if rule_name is not None else ""
+                        # pessimistically flip locally and in DB, then retry daemon notification
+                        row[self.COL_R_ENABLED] = "False"
+                        try:
+                            self._db.update(
+                                "rules",
+                                "enabled='False'",
+                                (name_clean, node_clean),
+                                "name=? AND node=?",
+                                action_on_conflict="OR REPLACE"
+                            )
+                        except Exception:
+                            pass
                         ok = self._auto_disable_rule(node_clean, name_clean)
-                        if ok:
-                            row[self.COL_R_ENABLED] = "False"
-                            self._expired_processed.add(key)
+                        # always track processed to avoid spamming; _auto_disable_rule retries notify
+                        self._expired_processed.add(key)
             except Exception:
                 pass
         if len(items) > 0:
@@ -2861,6 +2872,9 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
             nid = self._nodes.send_notification(node_addr, noti, self._notification_callback)
             if nid is not None:
                 self._notifications_sent[nid] = noti
+            else:
+                # keep trying on future ticks if notify failed
+                return False
             return True
         except Exception as e:
             print("auto_disable_rule exception:", e)
