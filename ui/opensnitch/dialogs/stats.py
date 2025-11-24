@@ -1593,8 +1593,12 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
                 if field == "action":
                     rule.action = value
                 elif field == "duration":
+                    # instead of mutate, delete and re-add to force daemon to reschedule
+                    self._nodes.delete_rule(rule_name, node_addr, self._notification_callback)
                     rule.duration = value
                     now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    rule.created = int(datetime.datetime.strptime(now_str, "%Y-%m-%d %H:%M:%S").timestamp())
+                    # update local DB entry
                     self._db.update(
                         table="rules",
                         fields="duration=?, time=?, created=?",
@@ -1602,15 +1606,16 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
                         condition="name='{0}' AND node='{1}'".format(rule_name, node_addr),
                         action_on_conflict=""
                     )
-                    rule.created = int(datetime.datetime.strptime(now_str, "%Y-%m-%d %H:%M:%S").timestamp())
+                    noti = ui_pb2.Notification(type=ui_pb2.CHANGE_RULE, rules=[rule])
                 elif field == "precedence":
                     rule.precedence = value
+                    noti = ui_pb2.Notification(type=ui_pb2.CHANGE_RULE, rules=[rule])
                 else:
                     self._db.update(table="rules", fields="{0}=?".format(field),
                                     values=[value], condition="name='{0}' AND node='{1}'".format(rule_name, node_addr),
                                     action_on_conflict="")
+                    noti = ui_pb2.Notification(type=ui_pb2.CHANGE_RULE, rules=[rule])
 
-                noti = ui_pb2.Notification(type=ui_pb2.CHANGE_RULE, rules=[rule])
                 nid = self._nodes.send_notification(node_addr, noti, self._notification_callback)
                 if nid != None:
                     self._notifications_sent[nid] = noti
