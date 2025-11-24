@@ -1641,8 +1641,8 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
                     # update local DB entry
                     self._db.update(
                         table="rules",
-                        fields="duration=?, time=?, created=?, enabled='True'",
-                        values=[value, now_str, now_str],
+                        fields="duration=?, created=?, enabled='True'",
+                        values=[value, now_str],
                         condition="name='{0}' AND node='{1}'".format(rule_name, node_addr),
                         action_on_conflict=""
                     )
