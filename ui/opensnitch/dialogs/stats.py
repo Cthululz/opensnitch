@@ -2780,6 +2780,7 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
             return
         if items is None or len(items) == 0:
             return
+        disabled_any = False
         # ensure sort cache length
         if hasattr(model, "timeleft_sort") and len(model.timeleft_sort) != len(items):
             model.timeleft_sort = [None] * len(items)
@@ -2834,6 +2835,7 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
                         ok = self._auto_disable_rule(node_clean, name_clean)
                         if ok:
                             self._expired_processed.add(key)
+                        disabled_any = True
             except Exception:
                 pass
         if len(items) > 0:
@@ -2846,6 +2848,11 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
             try:
                 # force a repaint so changes show without user interaction
                 self.rulesTable.viewport().update()
+            except Exception:
+                pass
+        if disabled_any:
+            try:
+                self._rules.updated.emit(0)
             except Exception:
                 pass
 
