@@ -1632,15 +1632,16 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
                     rule.action = value
                     noti = ui_pb2.Notification(type=ui_pb2.CHANGE_RULE, rules=[rule])
                 elif field == "duration":
-                    # update duration in place; reset timestamps to restart timer
+                    # update duration in place; reset timestamps to restart timer and re-enable
                     rule.duration = value
+                    rule.enabled = True
                     now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                     # created is stored as timestamp in proto
                     rule.created = int(datetime.datetime.strptime(now_str, "%Y-%m-%d %H:%M:%S").timestamp())
                     # update local DB entry
                     self._db.update(
                         table="rules",
-                        fields="duration=?, time=?, created=?",
+                        fields="duration=?, time=?, created=?, enabled='True'",
                         values=[value, now_str, now_str],
                         condition="name='{0}' AND node='{1}'".format(rule_name, node_addr),
                         action_on_conflict=""
