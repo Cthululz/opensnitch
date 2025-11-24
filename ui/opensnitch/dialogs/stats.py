@@ -2820,7 +2820,7 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
                     if key not in self._expired_processed:
                         node_clean = str(node_addr).strip() if node_addr is not None else ""
                         name_clean = str(rule_name).strip() if rule_name is not None else ""
-                        # pessimistically flip locally and in DB, then retry daemon notification
+                        # flip locally and persist, regardless of daemon response
                         row[self.COL_R_ENABLED] = "False"
                         try:
                             self._db.update(
@@ -2832,9 +2832,8 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
                             )
                         except Exception:
                             pass
-                        ok = self._auto_disable_rule(node_clean, name_clean)
-                        if ok:
-                            self._expired_processed.add(key)
+                        self._auto_disable_rule(node_clean, name_clean)
+                        self._expired_processed.add(key)
                         disabled_any = True
             except Exception:
                 pass
