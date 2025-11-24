@@ -1386,19 +1386,24 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
         Remove temporary rules that are expired, even if still marked enabled.
         Prefer the currently displayed rows (Rules tab), fall back to DB lookup.
         """
+        # refresh time-left so rows have up-to-date expiration status
+        try:
+            self._update_timeleft_column()
+        except Exception:
+            pass
+
         names = []
         try:
             model = self.rulesTable.model()
             items = getattr(model, "items", [])
             if items:
-                expired_label = QC.translate("stats", "expired")
                 for row in items:
                     try:
-                        dur = str(row[self.COL_R_DURATION]).strip().lower()
-                        if dur in ("always", "until restart"):
+                        dur = str(row[self.COL_R_DURATION]).strip()
+                        if self._is_permanent_duration(dur):
                             continue
-                        tleft = str(row[self.COL_R_TIMELEFT]).strip().lower()
-                        if tleft != expired_label.lower():
+                        tleft = self._compute_timeleft(row)
+                        if tleft != QC.translate("stats", "expired"):
                             continue
                         names.append((row[self.COL_R_NAME], row[self.COL_R_NODE]))
                     except Exception:
