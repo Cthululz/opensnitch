@@ -2680,6 +2680,7 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
             enabled = enabled_raw not in ("false", "0", "no")
             dur = str(row[self.COL_R_DURATION]).strip()
             created = row[self.COL_R_CREATED]
+            tstamp = row[self.COL_TIME]
             if self._is_permanent_duration(dur):
                 return "—"
             if not enabled:
@@ -2697,7 +2698,7 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
                     created_dt = datetime.datetime.fromisoformat(str(created).replace("Z", ""))
                 except Exception:
                     try:
-                        created_dt = datetime.datetime.strptime(str(row[self.COL_TIME]).split(".")[0], "%Y-%m-%d %H:%M:%S")
+                        created_dt = datetime.datetime.strptime(str(tstamp).split(".")[0], "%Y-%m-%d %H:%M:%S")
                     except Exception:
                         created_dt = datetime.datetime.fromtimestamp(float(created)) if str(created).replace(".","",1).isdigit() else datetime.datetime.now()
             remaining = (created_dt + datetime.timedelta(seconds=secs)) - datetime.datetime.now()
