@@ -2782,6 +2782,11 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
     def _auto_disable_rule(self, node_addr, rule_name):
         """Disable an expired temporary rule in DB and daemon."""
         try:
+            rec = self._get_rule(rule_name, node_addr)
+            if rec is None:
+                return
+            rule = Rule.new_from_records(rec)
+            rule.enabled = False
             # update DB
             self._db.update(
                 "rules",
@@ -2790,9 +2795,8 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
                 "name=? AND node=?",
                 action_on_conflict="OR REPLACE"
             )
-            # notify daemon
-            rule = ui_pb2.Rule(name=rule_name, enabled=False)
-            noti = ui_pb2.Notification(type=ui_pb2.DISABLE_RULE, rules=[rule])
+            # notify daemon with full rule to avoid deserialize errors
+            noti = ui_pb2.Notification(type=ui_pb2.CHANGE_RULE, rules=[rule])
             nid = self._nodes.send_notification(node_addr, noti, self._notification_callback)
             if nid is not None:
                 self._notifications_sent[nid] = noti
