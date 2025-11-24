@@ -457,6 +457,8 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
         self._timeleft_timer.setInterval(5000)
         self._timeleft_timer.timeout.connect(self._update_timeleft_column)
         self._timeleft_timer.start()
+        # keep track of expired temp rules we've already disabled
+        self._expired_processed = set()
 
         # TODO: allow to display multiples dialogs
         self._proc_details_dialog = ProcessDetailsDialog(appicon=appicon)
@@ -2733,9 +2735,42 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
                 continue
             val = self._compute_timeleft(row)
             row[self.COL_R_TIMELEFT] = val
+            # auto-disable expired temp rules (enabled + non-permanent + expired)
+            try:
+                dur = str(row[self.COL_R_DURATION]).strip().lower()
+                enabled_raw = str(row[self.COL_R_ENABLED]).strip().lower()
+                node_addr = row[self.COL_R_NODE]
+                rule_name = row[self.COL_R_NAME]
+                key = f"{node_addr}:{rule_name}"
+                if dur not in ("always", "until restart") and enabled_raw not in ("false", "0", "no") and val == QC.translate("stats", "expired"):
+                    if key not in self._expired_processed:
+                        self._auto_disable_rule(node_addr, rule_name)
+                        self._expired_processed.add(key)
+            except Exception:
+                pass
         top_left = model.createIndex(0, self.COL_R_TIMELEFT)
         bottom_right = model.createIndex(len(items)-1, self.COL_R_TIMELEFT)
         model.dataChanged.emit(top_left, bottom_right)
+
+    def _auto_disable_rule(self, node_addr, rule_name):
+        """Disable an expired temporary rule in DB and daemon."""
+        try:
+            # update DB
+            self._db.update(
+                "rules",
+                "enabled='False'",
+                (rule_name, node_addr),
+                "name=? AND node=?",
+                action_on_conflict="OR REPLACE"
+            )
+            # notify daemon
+            rule = ui_pb2.Rule(name=rule_name, enabled=False)
+            noti = ui_pb2.Notification(type=ui_pb2.DISABLE_RULE, rules=[rule])
+            nid = self._nodes.send_notification(node_addr, noti, self._notification_callback)
+            if nid is not None:
+                self._notifications_sent[nid] = noti
+        except Exception as e:
+            print("auto_disable_rule exception:", e)
 
     def _refresh_active_table(self):
         cur_idx = self.tabWidget.currentIndex()
