@@ -1596,7 +1596,12 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
                     noti = ui_pb2.Notification(type=ui_pb2.CHANGE_RULE, rules=[rule])
                 elif field == "duration":
                     # instead of mutate, delete and re-add to force daemon to reschedule
-                    self._nodes.delete_rule(rule_name, node_addr, self._notification_callback)
+                    try:
+                        nid_del, noti_del = self._nodes.delete_rule(rule_name, node_addr, self._notification_callback)
+                        if nid_del is not None:
+                            self._notifications_sent[nid_del] = noti_del
+                    except Exception as e:
+                        print("duration change: delete_rule exception", e)
                     rule.duration = value
                     now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                     rule.created = int(datetime.datetime.strptime(now_str, "%Y-%m-%d %H:%M:%S").timestamp())
