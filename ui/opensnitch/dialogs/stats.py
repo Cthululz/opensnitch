@@ -2720,6 +2720,30 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
         return "{0}h {1}m".format(hours, mins)
 
     def _compute_timeleft(self, row):
+        def _parse_dt(val):
+            """Parse DB datetime or timestamp; return None on failure."""
+            if val is None:
+                return None
+            s = str(val).strip()
+            if s == "":
+                return None
+            # numeric timestamp
+            if s.replace(".", "", 1).isdigit():
+                try:
+                    return datetime.datetime.fromtimestamp(float(s))
+                except Exception:
+                    pass
+            # ISO or Y-m-d H:M:S[.micro][Z]
+            for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M:%S.%f"):
+                try:
+                    return datetime.datetime.strptime(s.replace("Z", ""), fmt)
+                except Exception:
+                    pass
+            try:
+                return datetime.datetime.fromisoformat(s.replace("Z", ""))
+            except Exception:
+                return None
+
         try:
             enabled_raw = str(row[self.COL_R_ENABLED]).strip().lower()
             enabled = enabled_raw not in ("false", "0", "no")
@@ -2736,17 +2760,19 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
             secs = to_seconds(dur)
             if secs <= 0:
                 return QC.translate("stats", "expired")
-            try:
-                created_dt = datetime.datetime.strptime(str(created).split(".")[0], "%Y-%m-%d %H:%M:%S")
-            except Exception:
-                try:
-                    created_dt = datetime.datetime.fromisoformat(str(created).replace("Z", ""))
-                except Exception:
-                    try:
-                        created_dt = datetime.datetime.strptime(str(tstamp).split(".")[0], "%Y-%m-%d %H:%M:%S")
-                    except Exception:
-                        created_dt = datetime.datetime.fromtimestamp(float(created)) if str(created).replace(".","",1).isdigit() else datetime.datetime.now()
-            remaining = (created_dt + datetime.timedelta(seconds=secs)) - datetime.datetime.now()
+            created_dt = _parse_dt(created)
+            time_dt = _parse_dt(tstamp)
+            start_dt = None
+            if created_dt and time_dt:
+                start_dt = max(created_dt, time_dt)
+            elif created_dt:
+                start_dt = created_dt
+            elif time_dt:
+                start_dt = time_dt
+            else:
+                return QC.translate("stats", "expired")
+
+            remaining = (start_dt + datetime.timedelta(seconds=secs)) - datetime.datetime.now()
             return self._format_timeleft(int(remaining.total_seconds()))
         except Exception:
             return "—"

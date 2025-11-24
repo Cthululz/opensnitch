@@ -88,6 +88,27 @@ class GenericTableModel(QStandardItemModel):
                 # compute time left inline for rules table using headers
                 if self.tableName == "rules" and self.headerLabels:
                     try:
+                        def _parse_dt(val):
+                            if val is None:
+                                return None
+                            s = str(val).strip()
+                            if s == "":
+                                return None
+                            if s.replace(".", "", 1).isdigit():
+                                try:
+                                    return datetime.datetime.fromtimestamp(float(s))
+                                except Exception:
+                                    pass
+                            for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M:%S.%f"):
+                                try:
+                                    return datetime.datetime.strptime(s.replace("Z", ""), fmt)
+                                except Exception:
+                                    pass
+                            try:
+                                return datetime.datetime.fromisoformat(s.replace("Z", ""))
+                            except Exception:
+                                return None
+
                         col_name = self.headerLabels[index.column()].lower()
                         if col_name in ("time left", "timeleft"):
                             row = self.items[index.row()]
@@ -109,23 +130,16 @@ class GenericTableModel(QStandardItemModel):
                             secs = to_seconds(dur)
                             if secs <= 0:
                                 return "expired"
-                            # parse created (fallback to Time)
-                            try:
-                                created_dt = datetime.datetime.strptime(created.split(".")[0], "%Y-%m-%d %H:%M:%S")
-                            except Exception:
-                                try:
-                                    created_dt = datetime.datetime.fromisoformat(created.replace("Z", ""))
-                                except Exception:
-                                    try:
-                                        created_dt = datetime.datetime.strptime(str(row[time_idx]).split(".")[0], "%Y-%m-%d %H:%M:%S")
-                                    except Exception:
-                                        created_dt = datetime.datetime.now()
-                            # choose the most recent timestamp between created/time to avoid immediate drop
-                            try:
-                                time_dt = datetime.datetime.strptime(str(row[time_idx]).split(".")[0], "%Y-%m-%d %H:%M:%S")
+                            created_dt = _parse_dt(created)
+                            time_dt = _parse_dt(row[time_idx])
+                            if created_dt and time_dt:
                                 start_dt = max(created_dt, time_dt)
-                            except Exception:
+                            elif created_dt:
                                 start_dt = created_dt
+                            elif time_dt:
+                                start_dt = time_dt
+                            else:
+                                return "expired"
                             remaining = (start_dt + datetime.timedelta(seconds=secs)) - datetime.datetime.now()
                             rsecs = remaining.total_seconds()
                             if rsecs <= 0:
