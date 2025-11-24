@@ -1590,8 +1590,10 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
                 records = self._get_rule(rule_name, node_addr)
                 rule = Rule.new_from_records(records)
 
+                noti = None
                 if field == "action":
                     rule.action = value
+                    noti = ui_pb2.Notification(type=ui_pb2.CHANGE_RULE, rules=[rule])
                 elif field == "duration":
                     # instead of mutate, delete and re-add to force daemon to reschedule
                     self._nodes.delete_rule(rule_name, node_addr, self._notification_callback)
@@ -1606,7 +1608,6 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
                         condition="name='{0}' AND node='{1}'".format(rule_name, node_addr),
                         action_on_conflict=""
                     )
-                    noti = ui_pb2.Notification(type=ui_pb2.CHANGE_RULE, rules=[rule])
                 elif field == "precedence":
                     rule.precedence = value
                     noti = ui_pb2.Notification(type=ui_pb2.CHANGE_RULE, rules=[rule])
@@ -1616,9 +1617,10 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
                                     action_on_conflict="")
                     noti = ui_pb2.Notification(type=ui_pb2.CHANGE_RULE, rules=[rule])
 
-                nid = self._nodes.send_notification(node_addr, noti, self._notification_callback)
-                if nid != None:
-                    self._notifications_sent[nid] = noti
+                if noti is not None:
+                    nid = self._nodes.send_notification(node_addr, noti, self._notification_callback)
+                    if nid != None:
+                        self._notifications_sent[nid] = noti
         elif cur_idx == self.TAB_RULES and self.fwTable.isVisible():
             nodes_updated = []
             for idx in selection:
