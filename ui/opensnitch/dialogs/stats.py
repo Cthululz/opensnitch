@@ -1417,9 +1417,8 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
             return
         for name, node in names:
             try:
-                nid, noti = self._nodes.delete_rule(name, node, self._notification_callback)
-                if nid is not None:
-                    self._notifications_sent[nid] = noti
+                # do not delete; just disable expired temp rules
+                self._auto_disable_rule(node, name)
             except Exception as e:
                 print("clear_expired_temp_rules error:", e)
         self._rules.updated.emit(0)
@@ -2754,9 +2753,6 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
             return "—"
 
     def _update_timeleft_column(self):
-        # Only update while on the Rules tab to avoid wasting cycles.
-        if self.tabWidget.currentIndex() != self.TAB_RULES or not self.rulesTable.isVisible():
-            return
         model = self.rulesTable.model()
         try:
             items = getattr(model, "items", [])
@@ -2807,9 +2803,13 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
                         self._expired_processed.add(key)
             except Exception:
                 pass
-        top_left = model.createIndex(0, self.COL_R_TIMELEFT)
-        bottom_right = model.createIndex(len(items)-1, self.COL_R_TIMELEFT)
-        model.dataChanged.emit(top_left, bottom_right)
+        if len(items) > 0:
+            # update both Time left and Enabled columns to refresh the view
+            left_col = min(self.COL_R_TIMELEFT, self.COL_R_ENABLED)
+            right_col = max(self.COL_R_TIMELEFT, self.COL_R_ENABLED)
+            top_left = model.createIndex(0, left_col)
+            bottom_right = model.createIndex(len(items)-1, right_col)
+            model.dataChanged.emit(top_left, bottom_right)
 
     def _auto_disable_rule(self, node_addr, rule_name):
         """Disable an expired temporary rule in DB and daemon."""
