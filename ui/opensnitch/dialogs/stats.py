@@ -5,6 +5,7 @@ import os
 import csv
 import io
 import json
+import math
 
 from PyQt6 import QtCore, QtGui, uic, QtWidgets
 from PyQt6.QtCore import QCoreApplication as QC
@@ -2666,11 +2667,11 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
             return QC.translate("stats", "expired")
         if secs < 60:
             return "<1m"
-        mins = int(secs // 60)
-        hours = mins // 60
-        mins = mins % 60
+        total_mins = math.ceil(secs / 60)
+        hours = total_mins // 60
+        mins = total_mins % 60
         if hours == 0:
-            return "{0}m".format(mins)
+            return "{0}m".format(total_mins)
         return "{0}h {1}m".format(hours, mins)
 
     def _compute_timeleft(self, row):
@@ -2719,12 +2720,6 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
                 continue
             val = self._compute_timeleft(row)
             row[self.COL_R_TIMELEFT] = val
-            try:
-                dur = str(row[self.COL_R_DURATION]).strip().lower()
-                if dur not in ("always", "until restart"):
-                    print("[timeleft debug] row:", row[self.COL_R_NAME], "dur:", dur, "enabled:", row[self.COL_R_ENABLED], "created:", row[self.COL_R_CREATED], "time:", row[self.COL_TIME], "=>", val)
-            except Exception:
-                pass
         top_left = model.createIndex(0, self.COL_R_TIMELEFT)
         bottom_right = model.createIndex(len(items)-1, self.COL_R_TIMELEFT)
         model.dataChanged.emit(top_left, bottom_right)
