@@ -1603,7 +1603,6 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
                         action_on_conflict=""
                     )
                     rule.created = int(datetime.datetime.strptime(now_str, "%Y-%m-%d %H:%M:%S").timestamp())
-                    rule.time = now_str
                 elif field == "precedence":
                     rule.precedence = value
                 else:
