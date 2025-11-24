@@ -117,17 +117,23 @@ class GenericTableModel(QStandardItemModel):
                                         created_dt = datetime.datetime.strptime(str(row[time_idx]).split(".")[0], "%Y-%m-%d %H:%M:%S")
                                     except Exception:
                                         created_dt = datetime.datetime.now()
-                            remaining = (created_dt + datetime.timedelta(seconds=secs)) - datetime.datetime.now()
-                            rsecs = int(remaining.total_seconds())
+                            # choose the most recent timestamp between created/time to avoid immediate drop
+                            try:
+                                time_dt = datetime.datetime.strptime(str(row[time_idx]).split(".")[0], "%Y-%m-%d %H:%M:%S")
+                                start_dt = max(created_dt, time_dt)
+                            except Exception:
+                                start_dt = created_dt
+                            remaining = (start_dt + datetime.timedelta(seconds=secs)) - datetime.datetime.now()
+                            rsecs = remaining.total_seconds()
                             if rsecs <= 0:
                                 return "expired"
                             if rsecs < 60:
                                 return "<1m"
-                            mins = rsecs // 60
-                            hours = mins // 60
-                            mins = mins % 60
+                            total_mins = math.ceil(rsecs / 60)
+                            hours = total_mins // 60
+                            mins = total_mins % 60
                             if hours == 0:
-                                return f"{mins}m"
+                                return f"{total_mins}m"
                             return f"{hours}h {mins}m"
                     except Exception:
                         return "—"
