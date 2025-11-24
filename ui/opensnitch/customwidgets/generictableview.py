@@ -132,13 +132,9 @@ class GenericTableModel(QStandardItemModel):
                                 return "expired"
                             created_dt = _parse_dt(created)
                             time_dt = _parse_dt(row[time_idx])
-                            if created_dt and time_dt:
-                                start_dt = max(created_dt, time_dt)
-                            elif created_dt:
-                                start_dt = created_dt
-                            elif time_dt:
-                                start_dt = time_dt
-                            else:
+                            # Prefer created; fall back to time only if created missing
+                            start_dt = created_dt or time_dt
+                            if not start_dt:
                                 return "expired"
                             remaining = (start_dt + datetime.timedelta(seconds=secs)) - datetime.datetime.now()
                             rsecs = remaining.total_seconds()

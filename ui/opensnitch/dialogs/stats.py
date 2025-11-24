@@ -2762,14 +2762,9 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
                 return QC.translate("stats", "expired")
             created_dt = _parse_dt(created)
             time_dt = _parse_dt(tstamp)
-            start_dt = None
-            if created_dt and time_dt:
-                start_dt = max(created_dt, time_dt)
-            elif created_dt:
-                start_dt = created_dt
-            elif time_dt:
-                start_dt = time_dt
-            else:
+            # Prefer created; fall back to time only if created is missing
+            start_dt = created_dt or time_dt
+            if not start_dt:
                 return QC.translate("stats", "expired")
 
             remaining = (start_dt + datetime.timedelta(seconds=secs)) - datetime.datetime.now()
