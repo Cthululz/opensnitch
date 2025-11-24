@@ -127,8 +127,8 @@ class GenericTableModel(QStandardItemModel):
                             hours = mins // 60
                             mins = mins % 60
                             if hours == 0:
-                                return f\"{mins}m\"
-                            return f\"{hours}h {mins}m\"
+                                return f"{mins}m"
+                            return f"{hours}h {mins}m"
                     except Exception:
                         return "—"
                 return self.items[index.row()][index.column()]
