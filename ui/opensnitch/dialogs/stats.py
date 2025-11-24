@@ -1417,8 +1417,10 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
             return
         for name, node in names:
             try:
-                # do not delete; just disable expired temp rules
-                self._auto_disable_rule(node, name)
+                # delete expired temp rules entirely
+                nid, noti = self._nodes.delete_rule(name, node, self._notification_callback)
+                if nid is not None:
+                    self._notifications_sent[nid] = noti
             except Exception as e:
                 print("clear_expired_temp_rules error:", e)
         self._rules.updated.emit(0)
