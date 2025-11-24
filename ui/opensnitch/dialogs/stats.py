@@ -2817,10 +2817,10 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
                 key = f"{node_addr}:{rule_name}"
                 if dur not in ("always", "until restart") and enabled_raw not in ("false", "0", "no") and val == QC.translate("stats", "expired"):
                     if key not in self._expired_processed:
-                        self._auto_disable_rule(node_addr, rule_name)
-                        # reflect disabled state immediately in the model
-                        row[self.COL_R_ENABLED] = "False"
-                        self._expired_processed.add(key)
+                        ok = self._auto_disable_rule(node_addr, rule_name)
+                        if ok:
+                            row[self.COL_R_ENABLED] = "False"
+                            self._expired_processed.add(key)
             except Exception:
                 pass
         if len(items) > 0:
@@ -2837,11 +2837,11 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
                 pass
 
     def _auto_disable_rule(self, node_addr, rule_name):
-        """Disable an expired temporary rule in DB and daemon."""
+        """Disable an expired temporary rule in DB and daemon. Returns True if applied."""
         try:
             rec = self._get_rule(rule_name, node_addr)
             if rec is None:
-                return
+                return False
             rule = Rule.new_from_records(rec)
             rule.enabled = False
             # update DB
@@ -2857,8 +2857,10 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
             nid = self._nodes.send_notification(node_addr, noti, self._notification_callback)
             if nid is not None:
                 self._notifications_sent[nid] = noti
+            return True
         except Exception as e:
             print("auto_disable_rule exception:", e)
+        return False
 
     def _refresh_active_table(self):
         cur_idx = self.tabWidget.currentIndex()
