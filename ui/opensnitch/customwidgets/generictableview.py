@@ -82,6 +82,55 @@ class GenericTableModel(QStandardItemModel):
         if role == Qt.ItemDataRole.DisplayRole or role == Qt.ItemDataRole.EditRole:
             items_count = len(self.items)
             if index.isValid() and items_count > 0 and index.row() < items_count:
+                # compute time left inline for rules table using headers
+                if self.tableName == "rules" and self.headerLabels:
+                    try:
+                        col_name = self.headerLabels[index.column()].lower()
+                        if col_name in ("time left", "timeleft"):
+                            row = self.items[index.row()]
+                            # map columns by header name
+                            enabled_idx = self.headerLabels.index("Enabled") if "Enabled" in self.headerLabels else 3
+                            dur_idx = self.headerLabels.index("Duration") if "Duration" in self.headerLabels else 5
+                            created_idx = self.headerLabels.index("Created") if "Created" in self.headerLabels else len(row)-1
+                            time_idx = self.headerLabels.index("Time") if "Time" in self.headerLabels else 0
+                            enabled_raw = str(row[enabled_idx]).strip().lower()
+                            enabled = enabled_raw not in ("false", "0", "no")
+                            dur = str(row[dur_idx]).strip()
+                            created = str(row[created_idx]).strip()
+                            if dur in ("always", "until restart"):
+                                return "—"
+                            if not enabled:
+                                return "expired"
+                            if dur == "once":
+                                return "<1m"
+                            secs = to_seconds(dur)
+                            if secs <= 0:
+                                return "expired"
+                            # parse created (fallback to Time)
+                            try:
+                                created_dt = datetime.datetime.strptime(created.split(".")[0], "%Y-%m-%d %H:%M:%S")
+                            except Exception:
+                                try:
+                                    created_dt = datetime.datetime.fromisoformat(created.replace("Z", ""))
+                                except Exception:
+                                    try:
+                                        created_dt = datetime.datetime.strptime(str(row[time_idx]).split(".")[0], "%Y-%m-%d %H:%M:%S")
+                                    except Exception:
+                                        created_dt = datetime.datetime.now()
+                            remaining = (created_dt + datetime.timedelta(seconds=secs)) - datetime.datetime.now()
+                            rsecs = int(remaining.total_seconds())
+                            if rsecs <= 0:
+                                return "expired"
+                            if rsecs < 60:
+                                return "<1m"
+                            mins = rsecs // 60
+                            hours = mins // 60
+                            mins = mins % 60
+                            if hours == 0:
+                                return f\"{mins}m\"
+                            return f\"{hours}h {mins}m\"
+                    except Exception:
+                        return "—"
                 return self.items[index.row()][index.column()]
         return QStandardItemModel.data(self, index, role)
 
