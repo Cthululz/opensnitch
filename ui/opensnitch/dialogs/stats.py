@@ -690,6 +690,10 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
                 order_by="2",
                 sort_direction=self.SORT_ORDER[0],
                 tracking_column=self.COL_R_NAME)
+        rules_model = self.TABLES[self.TAB_RULES]['view'].model()
+        rules_model.timeleft_index = self.COL_R_TIMELEFT
+        self.TABLES[self.TAB_RULES]['view'].setSortingEnabled(True)
+        rules_model.setSortRole(QtCore.Qt.ItemDataRole.UserRole)
         # make rules header configurable
         rules_header = self.rulesTable.horizontalHeader()
         rules_header.setStretchLastSection(False)
@@ -2730,11 +2734,34 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
             return
         if items is None or len(items) == 0:
             return
+        # ensure sort cache length
+        if hasattr(model, "timeleft_sort") and len(model.timeleft_sort) != len(items):
+            model.timeleft_sort = [None] * len(items)
         for idx, row in enumerate(items):
             if len(row) <= self.COL_R_TIMELEFT:
                 continue
             val = self._compute_timeleft(row)
             row[self.COL_R_TIMELEFT] = val
+            # keep numeric sort key
+            try:
+                secs = None
+                if val == QC.translate("stats", "expired"):
+                    secs = -1
+                elif val == "—":
+                    secs = 1_000_000_000
+                elif val == "<1m":
+                    secs = 30
+                else:
+                    parts = val.replace("h", "").replace("m", "").split()
+                    if len(parts) == 1:
+                        secs = int(parts[0]) * 60
+                    elif len(parts) == 2:
+                        secs = int(parts[0]) * 3600 + int(parts[1]) * 60
+                if hasattr(model, "timeleft_sort") and idx < len(model.timeleft_sort):
+                    model.timeleft_sort[idx] = secs
+            except Exception:
+                if hasattr(model, "timeleft_sort") and idx < len(model.timeleft_sort):
+                    model.timeleft_sort[idx] = None
             # auto-disable expired temp rules (enabled + non-permanent + expired)
             try:
                 dur = str(row[self.COL_R_DURATION]).strip().lower()
@@ -2775,6 +2802,8 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
     def _refresh_active_table(self):
         cur_idx = self.tabWidget.currentIndex()
         model = self._get_active_table().model()
+        # reset expired tracking per refresh
+        self._expired_processed = set()
         if cur_idx == self.TAB_RULES:
             filter_text = ""
             if self.TABLES[cur_idx]['filterLine'] != None:

@@ -35,6 +35,9 @@ class GenericTableModel(QStandardItemModel):
 
     items = []
     lastItems = []
+    # optional sort keys for computed columns
+    timeleft_index = None
+    timeleft_sort = []
 
     def __init__(self, tableName, headerLabels):
         self.tableName = tableName
@@ -42,11 +45,6 @@ class GenericTableModel(QStandardItemModel):
         self.lastColumnCount = len(self.headerLabels)
         QStandardItemModel.__init__(self, 0, self.lastColumnCount)
         self.setHorizontalHeaderLabels(self.headerLabels)
-        # optional indices for time-left computation on rules table
-        self.timeleft_index = None
-        self.duration_index = None
-        self.enabled_index = None
-        self.created_index = None
 
 
     def _clean_text(self, value):
@@ -79,6 +77,11 @@ class GenericTableModel(QStandardItemModel):
     def data(self, index, role=Qt.ItemDataRole.DisplayRole):
         """Paint rows with the data stored in self.items
         """
+        if role == Qt.ItemDataRole.UserRole:
+            # sort key for time left
+            if self.timeleft_index is not None and index.column() == self.timeleft_index:
+                if index.row() < len(self.timeleft_sort):
+                    return self.timeleft_sort[index.row()]
         if role == Qt.ItemDataRole.DisplayRole or role == Qt.ItemDataRole.EditRole:
             items_count = len(self.items)
             if index.isValid() and items_count > 0 and index.row() < items_count:
@@ -223,6 +226,7 @@ class GenericTableModel(QStandardItemModel):
         self.setVerticalHeaderLabels(rowsLabels)
 
         self.items = []
+        self.timeleft_sort = []
         cols = []
         #don't trigger setItem's signals for each cell, instead emit dataChanged for all cells
         for x in range(0, upperBound):
@@ -239,6 +243,7 @@ class GenericTableModel(QStandardItemModel):
                 cols[-1] = self._clean_text(cols[-1])
 
             self.items.append(cols)
+            self.timeleft_sort.append(None)
 
         self.setVerticalHeaderLabels(rowsLabels)
         if self.lastItems != self.items or force == True:
