@@ -1382,10 +1382,35 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
             return True
 
     def _clear_expired_temp_rules(self):
-        expired = self._rules.get_expired_temp_rules()
-        if len(expired) == 0:
+        """
+        Remove temporary rules that are expired, even if still marked enabled.
+        Prefer the currently displayed rows (Rules tab), fall back to DB lookup.
+        """
+        names = []
+        try:
+            model = self.rulesTable.model()
+            items = getattr(model, "items", [])
+            if items:
+                expired_label = QC.translate("stats", "expired")
+                for row in items:
+                    try:
+                        dur = str(row[self.COL_R_DURATION]).strip().lower()
+                        if dur in ("always", "until restart"):
+                            continue
+                        tleft = str(row[self.COL_R_TIMELEFT]).strip().lower()
+                        if tleft != expired_label.lower():
+                            continue
+                        names.append((row[self.COL_R_NAME], row[self.COL_R_NODE]))
+                    except Exception:
+                        continue
+        except Exception:
+            pass
+
+        if not names:
+            names = self._rules.get_expired_temp_rules()
+        if len(names) == 0:
             return
-        for name, node in expired:
+        for name, node in names:
             try:
                 nid, noti = self._nodes.delete_rule(name, node, self._notification_callback)
                 if nid is not None:
@@ -2772,6 +2797,8 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
                 if dur not in ("always", "until restart") and enabled_raw not in ("false", "0", "no") and val == QC.translate("stats", "expired"):
                     if key not in self._expired_processed:
                         self._auto_disable_rule(node_addr, rule_name)
+                        # reflect disabled state immediately in the model
+                        row[self.COL_R_ENABLED] = "False"
                         self._expired_processed.add(key)
             except Exception:
                 pass
