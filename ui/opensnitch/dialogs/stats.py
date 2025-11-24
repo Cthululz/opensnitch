@@ -2809,6 +2809,11 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
             top_left = model.createIndex(0, left_col)
             bottom_right = model.createIndex(len(items)-1, right_col)
             model.dataChanged.emit(top_left, bottom_right)
+            try:
+                # force a repaint so changes show without user interaction
+                self.rulesTable.viewport().update()
+            except Exception:
+                pass
 
     def _auto_disable_rule(self, node_addr, rule_name):
         """Disable an expired temporary rule in DB and daemon."""
