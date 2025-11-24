@@ -1589,14 +1589,24 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
                 records = self._get_rule(rule_name, node_addr)
                 rule = Rule.new_from_records(records)
 
-                self._db.update(table="rules", fields="{0}=?".format(field),
-                                values=[value], condition="name='{0}' AND node='{1}'".format(rule_name, node_addr),
-                                action_on_conflict="")
-
                 if field == "action":
                     rule.action = value
                 elif field == "duration":
                     rule.duration = value
+                    now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    self._db.update(
+                        table="rules",
+                        fields="duration=?, time=?, created=?",
+                        values=[value, now_str, now_str],
+                        condition="name='{0}' AND node='{1}'".format(rule_name, node_addr),
+                        action_on_conflict=""
+                    )
+                    rule.created = int(datetime.datetime.strptime(now_str, "%Y-%m-%d %H:%M:%S").timestamp())
+                    rule.time = now_str
+                else:
+                    self._db.update(table="rules", fields="{0}=?".format(field),
+                                    values=[value], condition="name='{0}' AND node='{1}'".format(rule_name, node_addr),
+                                    action_on_conflict="")
                 elif field == "precedence":
                     rule.precedence = value
 
