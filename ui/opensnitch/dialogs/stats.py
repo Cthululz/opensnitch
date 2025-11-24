@@ -117,6 +117,9 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
     COL_NET_DST_PORT = 6
     COL_NET_UID = 8
     COL_NET_PID = 9
+    COL_NET_FAMILY = 10
+    COL_NET_IFACE = 11
+    COL_NET_METADATA = 12
 
     TAB_MAIN  = 0
     TAB_NODES = 1
@@ -765,7 +768,8 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
                 #resize_cols=(),
                 delegate=self.TABLES[self.TAB_NETSTAT]['delegate'],
                 order_by="2",
-                limit=self._get_limit()
+                limit=self._get_limit(),
+                tracking_column=self.COL_NET_METADATA
                 )
 
         self.TABLES[self.TAB_NODES]['label'] = self.nodesLabel
@@ -1787,7 +1791,8 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
                             QC.translate("stats", "Rule not found by that name and node"),
                             QtWidgets.QMessageBox.Icon.Warning)
                     return
-                self._rules_dialog.edit_rule(records, node)
+                r = RulesEditorDialog(modal=False)
+                r.edit_rule(records, node)
                 break
 
         elif cur_idx == self.TAB_RULES and self.fwTable.isVisible():

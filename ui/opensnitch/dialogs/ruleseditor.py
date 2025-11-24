@@ -54,7 +54,7 @@ class RulesEditorDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
 
     _notification_callback = QtCore.pyqtSignal(str, ui_pb2.NotificationReply)
 
-    def __init__(self, parent=None, _rule=None, appicon=None):
+    def __init__(self, parent=None, modal=True, appicon=None):
         super(RulesEditorDialog, self).__init__(parent)
 
         self._notifications_sent = {}
@@ -66,8 +66,10 @@ class RulesEditorDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
         self._old_rule_name = None
 
         self.setupUi(self)
+        self.setModal(modal)
         self.load_aliases_into_menu()
-        self.setWindowIcon(appicon)
+        if appicon != None:
+            self.setWindowIcon(appicon)
 
         self.ruleNameValidator = qvalidator.RestrictChars(RulesEditorDialog.INVALID_RULE_NAME_CHARS)
         self.ruleNameValidator.result.connect(self._cb_rule_name_validator_result)
@@ -1228,7 +1230,9 @@ class RulesEditorDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
         self._old_rule_name = records.value(RuleFields.Name)
 
         if self._load_rule(addr=_addr, rule=self.rule):
+            # show() is needed to open the dialog
             self.show()
+            self.exec()
 
     def new_rule(self):
         self.WORK_MODE = self.ADD_RULE

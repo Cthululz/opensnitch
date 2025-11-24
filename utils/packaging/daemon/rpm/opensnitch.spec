@@ -1,5 +1,5 @@
 Name:           opensnitch
-Version:        1.7.2
+Version:        1.8.0
 Release:        1%{?dist}
 Summary:        OpenSnitch is a GNU/Linux interactive application firewall
 
@@ -42,28 +42,28 @@ go build -o opensnitchd .
 
 %install
 mkdir -p %{buildroot}/usr/bin/ %{buildroot}/usr/lib/opensnitchd/ebpf/ %{buildroot}/usr/lib/systemd/system/ %{buildroot}/etc/opensnitchd/rules %{buildroot}/etc/opensnitchd/tasks %{buildroot}/etc/logrotate.d
-sed -i 's/\/usr\/local/\/usr/' daemon/opensnitchd.service
+sed -i 's/\/usr\/local/\/usr/' daemon/data/init/opensnitchd.service
 install -m 755 daemon/opensnitchd %{buildroot}/usr/bin/opensnitchd
-install -m 644 daemon/opensnitchd.service %{buildroot}/usr/lib/systemd/system/opensnitch.service
+install -m 644 daemon/data/init/opensnitchd.service %{buildroot}/usr/lib/systemd/system/opensnitch.service
 install -m 644 utils/packaging/daemon/deb/debian/opensnitch.logrotate %{buildroot}/etc/logrotate.d/opensnitch
 
 B=""
 if [ -f /etc/opensnitchd/default-config.json ]; then
     B="-b"
 fi
-install -m 644 $B daemon/default-config.json %{buildroot}/etc/opensnitchd/default-config.json
+install -m 644 $B daemon/data/default-config.json %{buildroot}/etc/opensnitchd/default-config.json
 
 B=""
 if [ -f /etc/opensnitchd/system-fw.json ]; then
     B="-b"
 fi
-install -m 644 $B daemon/system-fw.json %{buildroot}/etc/opensnitchd/system-fw.json
+install -m 644 $B daemon/data/system-fw.json %{buildroot}/etc/opensnitchd/system-fw.json
 
 B=""
 if [ -f /etc/opensnitchd/network_aliases.json ]; then
     B="-b"
 fi
-install -m 644 $B daemon/network_aliases.json %{buildroot}/etc/opensnitchd/network_aliases.json
+install -m 644 $B daemon/data/network_aliases.json %{buildroot}/etc/opensnitchd/network_aliases.json
 
 install -m 644 ebpf_prog/opensnitch.o %{buildroot}/usr/lib/opensnitchd/ebpf/opensnitch.o
 install -m 644 ebpf_prog/opensnitch-dns.o %{buildroot}/usr/lib/opensnitchd/ebpf/opensnitch-dns.o
