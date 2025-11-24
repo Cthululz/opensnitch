@@ -1632,16 +1632,12 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
                     rule.action = value
                     noti = ui_pb2.Notification(type=ui_pb2.CHANGE_RULE, rules=[rule])
                 elif field == "duration":
-                    # instead of mutate, delete and re-add to force daemon to reschedule
-                    try:
-                        nid_del, noti_del = self._nodes.delete_rule(rule_name, node_addr, self._notification_callback)
-                        if nid_del is not None:
-                            self._notifications_sent[nid_del] = noti_del
-                    except Exception as e:
-                        print("duration change: delete_rule exception", e)
+                    # update duration in place; reset timestamps to restart timer
                     rule.duration = value
                     now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    # created is stored as timestamp in proto, time as string in DB
                     rule.created = int(datetime.datetime.strptime(now_str, "%Y-%m-%d %H:%M:%S").timestamp())
+                    rule.time = now_str
                     # update local DB entry
                     self._db.update(
                         table="rules",
@@ -1650,6 +1646,7 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
                         condition="name='{0}' AND node='{1}'".format(rule_name, node_addr),
                         action_on_conflict=""
                     )
+                    noti = ui_pb2.Notification(type=ui_pb2.CHANGE_RULE, rules=[rule])
                 elif field == "precedence":
                     rule.precedence = value
                     noti = ui_pb2.Notification(type=ui_pb2.CHANGE_RULE, rules=[rule])
