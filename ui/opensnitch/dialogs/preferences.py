@@ -849,10 +849,8 @@ class PreferencesDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
             if custom_durs is not None:
                 import json
                 self._cfg.setSettings(Config.CUSTOM_DURATIONS_KEY, json.dumps(custom_durs))
-            durations = self._cfg.get_duration_options()
-            self._populate_duration_combo(self.comboUIDuration, durations)
+
             cur_duration_idx = self._cfg.normalize_duration_index(self.comboUIDuration.currentIndex())
-            self.comboUIDuration.setCurrentIndex(cur_duration_idx)
             self._cfg.setSettings(self._cfg.DEFAULT_DURATION_KEY, cur_duration_idx)
             self._cfg.setSettings(self._cfg.DEFAULT_TARGET_KEY, self.comboUITarget.currentIndex())
             self._cfg.setSettings(self._cfg.DEFAULT_TIMEOUT_KEY, self.spinUITimeout.value())

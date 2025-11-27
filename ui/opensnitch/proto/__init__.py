@@ -54,4 +54,9 @@ def import_():
         return importlib.import_module(proto_ver), importlib.import_module(grpc_ver)
     except Exception as e:
         print("error importing protobuffer: ", repr(e))
-        return importlib.import_module(default_pb, default_grpc)
+        # Graceful fallback to the default proto modules.
+        try:
+            return importlib.import_module(default_pb), importlib.import_module(default_grpc)
+        except Exception as ee:
+            print("fallback proto import failed: ", repr(ee))
+            raise

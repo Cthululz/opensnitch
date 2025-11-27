@@ -54,7 +54,7 @@ class RulesEditorDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
 
     _notification_callback = QtCore.pyqtSignal(str, ui_pb2.NotificationReply)
 
-    def __init__(self, parent=None, modal=True, appicon=None):
+    def __init__(self, parent=None, modal=True, appicon=None, rule=None):
         super(RulesEditorDialog, self).__init__(parent)
 
         self._notifications_sent = {}
@@ -124,8 +124,8 @@ class RulesEditorDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
 
         self._populate_duration_combo()
 
-        if _rule != None:
-            self._load_rule(rule=_rule)
+        if rule is not None:
+            self._load_rule(rule=rule)
 
     def load_aliases_into_menu(self):
         aliases = NetworkAliases.get_alias_all()
