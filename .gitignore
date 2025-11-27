@@ -2,3 +2,8 @@
 *.pyc
 *.profile
 daemon/.modcache
+daemon/.cache/
+daemon/.gopath/
+ui/.venv/
+ui/build/
+ui/dist/
