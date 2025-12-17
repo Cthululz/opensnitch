@@ -150,6 +150,9 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
 
     RULES_TYPE_PERMANENT = 0
     RULES_TYPE_TEMPORARY = 1
+    RULES_ACTION_ALL = "all"
+    RULES_ACTION_ALLOW = "allow"
+    RULES_ACTION_DENY = "deny"
 
     FILTER_TREE_APPS = 0
     FILTER_TREE_NODES = 3
@@ -464,6 +467,7 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
             "what2": ""
         }
         self._rules_filter_state_initialized = False
+        self._setup_rules_action_subfilters()
         self._timeleft_timer = QtCore.QTimer(self)
         self._timeleft_timer.setInterval(5000)
         self._timeleft_timer.timeout.connect(self._update_timeleft_column)
@@ -2303,6 +2307,12 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
 
         self._clear_rows_selection()
 
+        filter_meta = item.data(0, QtCore.Qt.ItemDataRole.UserRole)
+        if isinstance(filter_meta, tuple) and len(filter_meta) == 2 and \
+                filter_meta[0] in (self.RULES_TYPE_PERMANENT, self.RULES_TYPE_TEMPORARY):
+            self._handle_rules_action_filter(filter_meta)
+            return
+
         # FIXME: find a clever way of handling these options
 
         # top level items
@@ -2522,6 +2532,67 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
             return self.rulesTreePanel.topLevelItem(index)
         except Exception:
             return None
+
+    def _setup_rules_action_subfilters(self):
+        try:
+            appsItem = self.rulesTreePanel.topLevelItem(self.RULES_TREE_APPS)
+            if appsItem is None:
+                return
+            permItem = appsItem.child(self.RULES_TREE_PERMANENT)
+            tempItem = appsItem.child(self.RULES_TREE_TEMPORARY)
+            self._prepare_rules_tree_item(permItem, self.RULES_TYPE_PERMANENT)
+            self._prepare_rules_tree_item(tempItem, self.RULES_TYPE_TEMPORARY)
+        except Exception:
+            pass
+
+    def _prepare_rules_tree_item(self, item, section):
+        if item is None:
+            return
+        item.setData(0, QtCore.Qt.ItemDataRole.UserRole, (section, self.RULES_ACTION_ALL))
+        if item.childCount() > 0:
+            return
+        allowed_item = QtWidgets.QTreeWidgetItem([QC.translate("stats", "Allowed")])
+        allowed_item.setData(0, QtCore.Qt.ItemDataRole.UserRole, (section, self.RULES_ACTION_ALLOW))
+        allowed_icon = QtGui.QIcon.fromTheme("emblem-checked")
+        if allowed_icon.isNull():
+            allowed_icon = self.style().standardIcon(QtWidgets.QStyle.StandardPixmap.SP_DialogApplyButton)
+        allowed_item.setIcon(0, allowed_icon)
+        denied_item = QtWidgets.QTreeWidgetItem([QC.translate("stats", "Denied / Rejected")])
+        denied_item.setData(0, QtCore.Qt.ItemDataRole.UserRole, (section, self.RULES_ACTION_DENY))
+        denied_icon = QtGui.QIcon.fromTheme("dialog-cancel")
+        if denied_icon.isNull():
+            denied_icon = self.style().standardIcon(QtWidgets.QStyle.StandardPixmap.SP_DialogCancelButton)
+        denied_item.setIcon(0, denied_icon)
+        for child in (allowed_item, denied_item):
+            base_font = item.font(0)
+            child.setFont(0, base_font)
+            size = child.sizeHint(0)
+            child.setSizeHint(0, QtCore.QSize(size.width(), size.height() + 8))
+            item.addChild(child)
+
+    def _handle_rules_action_filter(self, meta):
+        try:
+            section, action = meta
+        except Exception:
+            return
+        self.fwTable.setVisible(False)
+        self.alertsTable.setVisible(False)
+        self.rulesTable.setVisible(True)
+        self.rulesScrollBar.setVisible(True)
+        if section == self.RULES_TYPE_PERMANENT:
+            self._set_rules_filter(
+                self.RULES_TREE_APPS,
+                self.RULES_TREE_PERMANENT,
+                self.RULES_TYPE_PERMANENT,
+                action_filter=action
+            )
+        elif section == self.RULES_TYPE_TEMPORARY:
+            self._set_rules_filter(
+                self.RULES_TREE_APPS,
+                self.RULES_TREE_TEMPORARY,
+                self.RULES_TYPE_TEMPORARY,
+                action_filter=action
+            )
 
     def _add_rulesTree_nodes(self):
         if self._nodes.count() > 0:
@@ -3453,16 +3524,18 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
             self.nodeStartButton.setChecked(True)
             self.nodeStartButton.setDown(True)
 
-    def _set_rules_filter(self, parent_row=-1, item_row=0, what="", what1="", what2=""):
+    def _set_rules_filter(self, parent_row=-1, item_row=0, what="", what1="", what2="", action_filter=None):
         self._rules_filter_state_initialized = True
         self._rules_filter_state = {
             "parent_row": parent_row,
             "item_row": item_row,
             "what": "" if what is None else what,
             "what1": "" if what1 is None else what1,
-            "what2": "" if what2 is None else what2
+            "what2": "" if what2 is None else what2,
+            "action_filter": action_filter
         }
         section = self.FILTER_TREE_APPS
+        selection_value = what
 
         if parent_row == -1:
 
@@ -3554,6 +3627,16 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
             filter_clause = "(r.name LIKE '%{0}%' OR r.operator_data LIKE '%{0}%')".format(filter_text)
             what = _append_condition(what, filter_clause)
 
+        if selection_value in (self.RULES_TYPE_PERMANENT, self.RULES_TYPE_TEMPORARY):
+            current_action = action_filter or self.RULES_ACTION_ALL
+            if current_action == self.RULES_ACTION_ALLOW:
+                what = _append_condition(what, "r.action = '{0}'".format(Config.ACTION_ALLOW))
+            elif current_action == self.RULES_ACTION_DENY:
+                what = _append_condition(
+                    what,
+                    "r.action IN ('{0}','{1}')".format(Config.ACTION_DENY, Config.ACTION_REJECT)
+                )
+
         rules_view = self.TABLES[self.TAB_RULES]['view']
         model = rules_view.model()
         self.setQuery(model, "SELECT {0} FROM rules as r {1} {2} {3}".format(
@@ -3584,7 +3667,8 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
             state["item_row"],
             state["what"],
             state["what1"],
-            state["what2"]
+            state["what2"],
+            state.get("action_filter")
         )
         if update_timeleft:
             self._update_timeleft_column()
