@@ -471,6 +471,7 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
         }
         self._rule_focus_breadcrumbs = []
         self._rule_reference_notice = None
+        self._navigation_stack = []
         self._rules_filter_state_initialized = False
         self._setup_rules_action_subfilters()
         self._timeleft_timer = QtCore.QTimer(self)
@@ -2142,6 +2143,7 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
             cur_idx = self.TAB_NODES
             self.IN_DETAIL_VIEW[cur_idx] = True
             self.LAST_SELECTED_ITEM = row.model().index(row.row(), self.COL_NODE).data()
+            self._push_navigation_state(origin_tab, cur_idx)
             self.tabWidget.setCurrentIndex(cur_idx)
             self._set_active_widgets(prev_idx, True, str(data))
             self._set_nodes_query(data)
@@ -2151,6 +2153,7 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
             self.IN_DETAIL_VIEW[cur_idx] = True
             self.LAST_SELECTED_ITEM = row.model().index(row.row(), self.COL_RULES).data()
             r_name, node = self._set_rules_tab_active(row, cur_idx, self.COL_RULES, self.COL_NODE)
+            self._push_navigation_state(origin_tab, cur_idx)
             self.tabWidget.setCurrentIndex(cur_idx)
             self._set_active_widgets(prev_idx, True, str(data))
             self._set_rules_query(r_name, node)
@@ -2161,6 +2164,7 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
             rowdata = row.model().index(row.row(), self.COL_DSTIP).data()
             ip = rowdata
             self.LAST_SELECTED_ITEM = ip
+            self._push_navigation_state(origin_tab, cur_idx)
             self.tabWidget.setCurrentIndex(cur_idx)
             self._set_active_widgets(prev_idx, True, ip)
             self._set_addrs_query(ip)
@@ -2173,6 +2177,7 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
             if host == "":
                 return
             self.LAST_SELECTED_ITEM = host
+            self._push_navigation_state(origin_tab, cur_idx)
             self.tabWidget.setCurrentIndex(cur_idx)
             self._set_active_widgets(prev_idx, True, host)
             self._set_hosts_query(host)
@@ -2183,6 +2188,7 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
             rowdata = row.model().index(row.row(), self.COL_DSTPORT).data()
             port = rowdata
             self.LAST_SELECTED_ITEM = port
+            self._push_navigation_state(origin_tab, cur_idx)
             self.tabWidget.setCurrentIndex(cur_idx)
             self._set_active_widgets(prev_idx, True, port)
             self._set_ports_query(port)
@@ -2193,6 +2199,7 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
             rowdata = row.model().index(row.row(), self.COL_UID).data()
             uid = rowdata
             self.LAST_SELECTED_ITEM = uid
+            self._push_navigation_state(origin_tab, cur_idx)
             self.tabWidget.setCurrentIndex(cur_idx)
             self._set_active_widgets(prev_idx, True, uid)
             self._set_users_query(uid)
@@ -2209,6 +2216,7 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
             cur_idx = self.TAB_PROCS
             self.IN_DETAIL_VIEW[cur_idx] = True
             self.LAST_SELECTED_ITEM = row.model().index(row.row(), self.COL_PROCS).data()
+            self._push_navigation_state(origin_tab, cur_idx)
             self.tabWidget.setCurrentIndex(cur_idx)
             self._set_active_widgets(prev_idx, True, self.LAST_SELECTED_ITEM)
             self._set_process_query(self.LAST_SELECTED_ITEM)
@@ -2306,6 +2314,7 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
                 data = row.model().index(row.row(), self.COL_NET_PROC).data()
                 if data == "":
                     return
+            self._push_navigation_state(origin_tab, cur_idx)
             self.tabWidget.setCurrentIndex(cur_idx)
 
         self._set_active_widgets(cur_idx, True, str(data))
@@ -3040,6 +3049,40 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
         self._set_rules_filter()
         self._update_rule_focus_indicator()
         return True
+
+    def _push_navigation_state(self, origin_tab, target_tab):
+        try:
+            origin_tab = int(origin_tab)
+            target_tab = int(target_tab)
+        except Exception:
+            return
+        if origin_tab == target_tab:
+            return
+        stack = getattr(self, "_navigation_stack", None)
+        if stack is None:
+            stack = []
+            self._navigation_stack = stack
+        stack.append(origin_tab)
+
+    def _pop_navigation_tab(self):
+        stack = getattr(self, "_navigation_stack", None)
+        if not stack:
+            return False
+        while stack:
+            tab_idx = stack.pop()
+            if tab_idx is None:
+                continue
+            try:
+                self.tabWidget.setCurrentIndex(tab_idx)
+                return True
+            except Exception:
+                continue
+        return False
+
+    def _clear_navigation_history(self):
+        stack = getattr(self, "_navigation_stack", None)
+        if stack is not None:
+            stack.clear()
 
     def _maybe_exit_detail_view(self):
         """If the current tab is in detail view, exit back to the summary list."""
@@ -4640,12 +4683,15 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
             if modifiers & QtCore.Qt.KeyboardModifier.ShiftModifier:
                 self._clear_active_filters()
                 self._reset_rule_focus_navigation()
+                self._clear_navigation_history()
                 return
             if self._clear_active_filters():
                 return
             if self._pop_rule_focus_breadcrumb():
                 return
             if self._maybe_exit_detail_view():
+                return
+            if self._pop_navigation_tab():
                 return
             return
         super(StatsDialog, self).keyPressEvent(event)
