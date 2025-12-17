@@ -456,6 +456,14 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
         self._action_list = self._actions.getByType(PluginBase.TYPE_MAIN_DIALOG)
         self._last_update = datetime.datetime.now()
         self._rules_filter_mode = self.FILTER_RULES_ALL
+        self._rules_filter_state = {
+            "parent_row": -1,
+            "item_row": self.RULES_TREE_APPS,
+            "what": "",
+            "what1": "",
+            "what2": ""
+        }
+        self._rules_filter_state_initialized = False
         self._timeleft_timer = QtCore.QTimer(self)
         self._timeleft_timer.setInterval(5000)
         self._timeleft_timer.timeout.connect(self._update_timeleft_column)
@@ -1246,29 +1254,11 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
             actionMenu = QtWidgets.QMenu(self.COL_STR_ACTION)
             nodesMenu = QtWidgets.QMenu(QC.translate("stats", "Apply to"))
             exportMenu = QtWidgets.QMenu(QC.translate("stats", "Export"))
-            filterMenu = QtWidgets.QMenu(QC.translate("stats", "Filter rules"))
-
             nodes_menu = []
             if self._nodes.count() > 0:
                 for node in self._nodes.get_nodes():
                     nodes_menu.append([nodesMenu.addAction(node), node])
                 menu.addMenu(nodesMenu)
-            # filter submenu
-            _filter_all = filterMenu.addAction(QC.translate("stats", "All"))
-            _filter_perm = filterMenu.addAction(QC.translate("stats", "Permanent"))
-            _filter_temp_active = filterMenu.addAction(QC.translate("stats", "Temporary (active)"))
-            _filter_temp_expired = filterMenu.addAction(QC.translate("stats", "Temporary (expired)"))
-            for act in (_filter_all, _filter_perm, _filter_temp_active, _filter_temp_expired):
-                act.setCheckable(True)
-            if self._rules_filter_mode == self.FILTER_RULES_ALL:
-                _filter_all.setChecked(True)
-            elif self._rules_filter_mode == self.FILTER_RULES_PERM:
-                _filter_perm.setChecked(True)
-            elif self._rules_filter_mode == self.FILTER_RULES_TEMP_ACTIVE:
-                _filter_temp_active.setChecked(True)
-            elif self._rules_filter_mode == self.FILTER_RULES_TEMP_EXPIRED:
-                _filter_temp_expired.setChecked(True)
-            menu.addMenu(filterMenu)
 
             _actAllow = actionMenu.addAction(QC.translate("stats", "Allow"))
             _actDeny = actionMenu.addAction(QC.translate("stats", "Deny"))
@@ -1358,14 +1348,6 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
                 self._clear_temp_rules_by_scope(selection[0][self.COL_R_NODE], self.CLEAR_APP)
             elif action == _menu_clear_dst:
                 self._clear_temp_rules_by_scope(selection[0][self.COL_R_NODE], self.CLEAR_DST)
-            elif action == _filter_all:
-                self._set_rules_filter_mode(self.FILTER_RULES_ALL)
-            elif action == _filter_perm:
-                self._set_rules_filter_mode(self.FILTER_RULES_PERM)
-            elif action == _filter_temp_active:
-                self._set_rules_filter_mode(self.FILTER_RULES_TEMP_ACTIVE)
-            elif action == _filter_temp_expired:
-                self._set_rules_filter_mode(self.FILTER_RULES_TEMP_EXPIRED)
             elif action in dur_actions:
                 self._table_menu_change_rule_field(cur_idx, model, selection, "duration", action.data())
             elif action == _actAllow:
@@ -1991,19 +1973,19 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
             qstr = self._get_indetail_filter_query(model.query().lastQuery(), text)
 
         else:
+            if cur_idx == StatsDialog.TAB_RULES and not self.fwTable.isVisible() and not self.alertsTable.isVisible():
+                self._reapply_rules_filter(update_timeleft=True)
+                return
             where_clause = self._get_filter_line_clause(cur_idx, text)
             qstr = self._db.get_query( self.TABLES[cur_idx]['name'], self.TABLES[cur_idx]['display_fields'] ) + \
                 where_clause + self._get_order()
             if text == "":
                 qstr = qstr + self._get_limit()
-            if cur_idx == StatsDialog.TAB_RULES:
-                # force refresh TimeLeft column after applying filter
-                self.setQuery(model, qstr)
-                self._update_timeleft_column()
-                return
 
         if qstr != None:
             self.setQuery(model, qstr)
+            if cur_idx == StatsDialog.TAB_RULES:
+                self._update_timeleft_column()
 
     def _cb_combo_netstat_changed(self, combo, idx):
         refreshIndex = self.comboNetstatInterval.currentIndex()
@@ -2893,20 +2875,23 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
 
     def _refresh_active_table(self):
         cur_idx = self.tabWidget.currentIndex()
-        model = self._get_active_table().model()
+        view = self._get_active_table()
+        model = view.model()
         # reset expired tracking per refresh
         self._expired_processed = set()
         if cur_idx == self.TAB_RULES:
-            filter_text = ""
-            if self.TABLES[cur_idx]['filterLine'] != None:
-                filter_text = self.TABLES[cur_idx]['filterLine'].text()
-            where_clause = self._get_filter_line_clause(cur_idx, filter_text)
-            qstr = self._db.get_query(self.TABLES[cur_idx]['name'], self.TABLES[cur_idx]['display_fields']) + where_clause + self._get_order()
-            if filter_text == "":
-                qstr += self._get_limit()
-            self.setQuery(model, qstr)
-            self.TABLES[cur_idx]['view'].refresh()
-            self._update_timeleft_column()
+            if self.IN_DETAIL_VIEW[self.TAB_RULES]:
+                lastQuery = model.query().lastQuery()
+                if "LIMIT" not in lastQuery:
+                    lastQuery += self._get_limit()
+                self.setQuery(model, lastQuery)
+                view.refresh()
+                return
+
+            if self.rulesTable.isVisible():
+                self._reapply_rules_filter(update_timeleft=True)
+            else:
+                view.refresh()
             return
 
         lastQuery = model.query().lastQuery()
@@ -3469,6 +3454,14 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
             self.nodeStartButton.setDown(True)
 
     def _set_rules_filter(self, parent_row=-1, item_row=0, what="", what1="", what2=""):
+        self._rules_filter_state_initialized = True
+        self._rules_filter_state = {
+            "parent_row": parent_row,
+            "item_row": item_row,
+            "what": "" if what is None else what,
+            "what1": "" if what1 is None else what1,
+            "what2": "" if what2 is None else what2
+        }
         section = self.FILTER_TREE_APPS
 
         if parent_row == -1:
@@ -3519,6 +3512,16 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
                 self.TABLES[self.TAB_FIREWALL]['view'].filterByChain(what2, tbl[0], tbl[1], parm[0], parm[1])
             return
 
+        def _append_condition(base, clause):
+            clause = clause.strip()
+            if clause == "":
+                return base
+            if base == "":
+                return "WHERE " + clause
+            if base.endswith(" "):
+                base = base.rstrip()
+            return base + " AND " + clause
+
         if section == self.FILTER_TREE_APPS:
             if what == self.RULES_TYPE_TEMPORARY:
                 what = "WHERE r.duration != '%s'" % Config.DURATION_ALWAYS
@@ -3527,20 +3530,64 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
         elif section == self.FILTER_TREE_NODES and what != "":
             what = "WHERE r.node = '%s'" % what
 
-        filter_text = self.filterLine.text()
+        # apply duration filter from the contextual menu
+        mode_clause = ""
+        if self._rules_filter_mode == self.FILTER_RULES_PERM:
+            mode_clause = "(r.duration IN ('{0}','{1}'))".format(
+                Config.DURATION_ALWAYS,
+                Config.DURATION_UNTIL_RESTART
+            )
+        elif self._rules_filter_mode == self.FILTER_RULES_TEMP_ACTIVE:
+            mode_clause = "(r.duration NOT IN ('{0}','{1}') AND r.enabled='True')".format(
+                Config.DURATION_ALWAYS,
+                Config.DURATION_UNTIL_RESTART
+            )
+        elif self._rules_filter_mode == self.FILTER_RULES_TEMP_EXPIRED:
+            mode_clause = "(r.duration NOT IN ('{0}','{1}') AND r.enabled='False')".format(
+                Config.DURATION_ALWAYS,
+                Config.DURATION_UNTIL_RESTART
+            )
+        what = _append_condition(what, mode_clause)
+
+        filter_text = self.filterLine.text().strip()
         if filter_text != "":
-            if what == "":
-                what = "WHERE"
-            else:
-                what = what + " AND"
-            what = what + " r.name LIKE '%{0}%'".format(filter_text)
-        model = self._get_active_table().model()
+            filter_clause = "(r.name LIKE '%{0}%' OR r.operator_data LIKE '%{0}%')".format(filter_text)
+            what = _append_condition(what, filter_clause)
+
+        rules_view = self.TABLES[self.TAB_RULES]['view']
+        model = rules_view.model()
         self.setQuery(model, "SELECT {0} FROM rules as r {1} {2} {3}".format(
             self.TABLES[self.TAB_RULES]['display_fields'],
             what,
             self._get_order(),
             self._get_limit()
         ))
+        rules_view.refresh()
+
+    def _reapply_rules_filter(self, update_timeleft=False):
+        if not getattr(self, "_rules_filter_state_initialized", False):
+            self._set_rules_filter()
+            if update_timeleft:
+                self._update_timeleft_column()
+            return
+        state = getattr(self, "_rules_filter_state", None)
+        if state is None:
+            state = {
+                "parent_row": -1,
+                "item_row": self.RULES_TREE_APPS,
+                "what": "",
+                "what1": "",
+                "what2": ""
+            }
+        self._set_rules_filter(
+            state["parent_row"],
+            state["item_row"],
+            state["what"],
+            state["what1"],
+            state["what2"]
+        )
+        if update_timeleft:
+            self._update_timeleft_column()
 
     def _set_rules_query(self, rule_name="", node=""):
         if node != "":
