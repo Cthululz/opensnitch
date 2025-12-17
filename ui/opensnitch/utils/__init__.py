@@ -207,6 +207,15 @@ class Utils():
         return names.tobytes(), outbytes
 
     @staticmethod
+    def get_boot_id():
+        """Return the current kernel boot id if available."""
+        try:
+            with open("/proc/sys/kernel/random/boot_id", "r", encoding="utf-8") as f:
+                return f.read().strip()
+        except Exception:
+            return ""
+
+    @staticmethod
     def create_socket_dirs():
         """https://www.linuxbase.org/betaspecs/fhs/fhs.html#runRuntimeVariableData
         """

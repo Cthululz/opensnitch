@@ -121,6 +121,7 @@ class Config:
     DEFAULT_DB_MAX_DAYS       = "database/max_days"
     DEFAULT_DB_PURGE_INTERVAL = "database/purge_interval"
     DEFAULT_DB_JRNL_WAL       = "database/jrnl_wal"
+    LAST_BOOT_ID = "global/last_boot_id"
 
     DEFAULT_TIMEOUT = 30
 

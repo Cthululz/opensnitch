@@ -609,6 +609,21 @@ class Database:
 
         return True
 
+    def get_rules_by_duration(self, duration):
+        qstr = "SELECT name, node FROM rules WHERE duration=?"
+        results = []
+        with self._lock:
+            q = QSqlQuery(qstr, self.db)
+            q.prepare(qstr)
+            q.addBindValue(duration)
+            if not q.exec():
+                print("db, get_rules_by_duration() ERROR:", qstr)
+                print(q.lastError().driverText())
+                return results
+            while q.next():
+                results.append((q.value(0), q.value(1)))
+        return results
+
     def get_connection_by_field(self, field, date):
         """
         """

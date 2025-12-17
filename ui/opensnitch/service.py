@@ -122,6 +122,8 @@ class UIService(ui_pb2_grpc.UIServicer, QtWidgets.QGraphicsObject):
 
         self._nodes = Nodes.instance()
         self._nodes.reset_status()
+        self._pending_until_restart = {}
+        self._initialize_boot_cleanup()
 
         self._last_stats = {}
         self._last_items = {
@@ -753,6 +755,7 @@ class UIService(ui_pb2_grpc.UIServicer, QtWidgets.QGraphicsObject):
                     self._update_fw_status(kwargs['node_config'].isFirewallRunning)
                 else:
                     self._update_fw_status(True)
+                self._purge_pending_until_restart(addr)
         elif kwargs['action'] == self.ADD_RULE:
             rule = kwargs['rule']
             proto, addr = self._get_peer(kwargs['peer'])
@@ -788,6 +791,55 @@ class UIService(ui_pb2_grpc.UIServicer, QtWidgets.QGraphicsObject):
 
         elif kwargs['action'] == self.NODE_DELETE:
             self._delete_node(kwargs['peer'])
+
+    def _initialize_boot_cleanup(self):
+        """Track host reboot and purge 'until restart' rules when needed."""
+        try:
+            current_boot = Utils.get_boot_id()
+        except Exception:
+            current_boot = ""
+
+        stored_boot = self._cfg.getSettings(Config.LAST_BOOT_ID)
+        if current_boot == "" or current_boot == stored_boot:
+            self._pending_until_restart = {}
+            return
+
+        self._cfg.setSettings(Config.LAST_BOOT_ID, current_boot)
+        pending = {}
+        try:
+            rules = self._db.get_rules_by_duration(Config.DURATION_UNTIL_RESTART)
+        except Exception as e:
+            print("service, boot cleanup exception:", e)
+            rules = []
+
+        for name, node in rules:
+            node_addr = "" if node is None else str(node)
+            if node_addr not in pending:
+                pending[node_addr] = []
+            pending[node_addr].append(str(name))
+
+        if len(rules) > 0:
+            self._nodes.delete_rule_by_field(Config.DURATION_FIELD, [Config.DURATION_UNTIL_RESTART])
+
+        self._pending_until_restart = pending
+
+    def _purge_pending_until_restart(self, addr):
+        if not getattr(self, "_pending_until_restart", {}):
+            return
+        node_rules = self._pending_until_restart.pop(addr, [])
+        for rule_name in node_rules:
+            try:
+                self._nodes.delete_rule(rule_name, addr, self._notification_callback)
+            except Exception as e:
+                print("service, purge until restart error:", e)
+
+        # broadcast rules (no node stored)
+        global_rules = self._pending_until_restart.pop("", [])
+        for rule_name in global_rules:
+            try:
+                self._nodes.delete_rule(rule_name, None, self._notification_callback)
+            except Exception as e:
+                print("service, purge until restart broadcast error:", e)
 
     def OpenWindow(self):
         self._stats_dialog.show()
