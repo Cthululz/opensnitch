@@ -84,7 +84,17 @@ class GenericTableModel(QStandardItemModel):
                     return self.timeleft_sort[index.row()]
         if role == Qt.ItemDataRole.DisplayRole or role == Qt.ItemDataRole.EditRole:
             items_count = len(self.items)
-            if index.isValid() and items_count > 0 and index.row() < items_count:
+            row_idx = index.row()
+            col_idx = index.column()
+            if index.isValid() and items_count > 0 and 0 <= row_idx < items_count:
+                try:
+                    row = self.items[row_idx]
+                except IndexError:
+                    # The backing list can change while Qt is still painting a stale
+                    # index, so fail gracefully instead of crashing.
+                    return QStandardItemModel.data(self, index, role)
+                if col_idx < 0 or col_idx >= len(row):
+                    return QStandardItemModel.data(self, index, role)
                 # compute time left inline for rules table using headers
                 if self.tableName == "rules" and self.headerLabels:
                     try:
@@ -111,7 +121,6 @@ class GenericTableModel(QStandardItemModel):
 
                         col_name = self.headerLabels[index.column()].lower()
                         if col_name in ("time left", "timeleft"):
-                            row = self.items[index.row()]
                             # map columns by header name
                             enabled_idx = self.headerLabels.index("Enabled") if "Enabled" in self.headerLabels else 3
                             dur_idx = self.headerLabels.index("Duration") if "Duration" in self.headerLabels else 5
@@ -150,7 +159,7 @@ class GenericTableModel(QStandardItemModel):
                             return f"{hours}h {mins}m"
                     except Exception:
                         return "—"
-                return self.items[index.row()][index.column()]
+                return row[col_idx]
         return QStandardItemModel.data(self, index, role)
 
     # set columns based on query's fields

@@ -3068,6 +3068,8 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
         stack = getattr(self, "_navigation_stack", None)
         if not stack:
             return False
+        # Ensure we leave any detail view before jumping back to the origin tab.
+        self._maybe_exit_detail_view()
         while stack:
             tab_idx = stack.pop()
             if tab_idx is None:
@@ -4687,11 +4689,11 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
                 return
             if self._pop_rule_focus_breadcrumb():
                 return
-            if self._clear_active_filters():
+            if self._pop_navigation_tab():
                 return
             if self._maybe_exit_detail_view():
                 return
-            if self._pop_navigation_tab():
+            if self._clear_active_filters():
                 return
             return
         super(StatsDialog, self).keyPressEvent(event)
