@@ -469,6 +469,7 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
             "action_filter": None,
             "rule_focus": None
         }
+        self._rule_focus_breadcrumbs = []
         self._rules_filter_state_initialized = False
         self._setup_rules_action_subfilters()
         self._timeleft_timer = QtCore.QTimer(self)
@@ -1175,7 +1176,7 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
                 o = ConnDetails(self)
                 o.showByField("time", coltime)
             elif action == _menu_goto_rule and rule_index is not None:
-                self._maybe_focus_rule_from_index(rule_index)
+                self._focus_rule_from_index(rule_index)
 
         except Exception as e:
             print(e)
@@ -1218,7 +1219,7 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
             action = menu.exec(table.mapToGlobal(point))
             if action == _menu_goto_rule:
                 table.clearSelection()
-                self._maybe_focus_rule_from_index(rule_index)
+                self._focus_rule_from_index(rule_index)
         except Exception as e:
             print(e)
         finally:
@@ -2848,6 +2849,17 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
         except Exception:
             return None
 
+    def _focus_rule_from_index(self, model_index):
+        """Focus a rule while temporarily disabling the context-menu guard."""
+        if model_index is None or not model_index.isValid():
+            return False
+        was_menu_active = getattr(self, "_context_menu_active", False)
+        self._context_menu_active = False
+        try:
+            return self._maybe_focus_rule_from_index(model_index)
+        finally:
+            self._context_menu_active = was_menu_active
+
     def _maybe_focus_rule_from_index(self, model_index):
         if model_index is None or not model_index.isValid():
             return False
@@ -2884,6 +2896,11 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
         except Exception:
             return False
 
+        try:
+            origin_tab = self.tabWidget.currentIndex()
+        except Exception:
+            origin_tab = self.TAB_MAIN
+        self._remember_rule_focus_origin(origin_tab)
         self.tabWidget.setCurrentIndex(self.TAB_RULES)
         self.IN_DETAIL_VIEW[self.TAB_RULES] = False
         self._restore_rules_tab_widgets(True)
@@ -2956,6 +2973,43 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
                 self.labelRowsCount.setText("")
         else:
             self.labelRowsCount.setText("")
+
+    def _remember_rule_focus_origin(self, tab_index):
+        if tab_index == self.TAB_RULES:
+            return
+        stack = getattr(self, "_rule_focus_breadcrumbs", None)
+        if stack is None:
+            stack = []
+            self._rule_focus_breadcrumbs = stack
+        stack.append({"tab": tab_index})
+
+    def _pop_rule_focus_breadcrumb(self):
+        stack = getattr(self, "_rule_focus_breadcrumbs", None)
+        if not stack:
+            return False
+        while stack:
+            info = stack.pop()
+            tab_idx = info.get("tab")
+            if tab_idx is None:
+                continue
+            try:
+                self.tabWidget.setCurrentIndex(tab_idx)
+            except Exception:
+                pass
+            return True
+        return False
+
+    def _reset_rule_focus_navigation(self):
+        stack = getattr(self, "_rule_focus_breadcrumbs", None)
+        if stack is not None:
+            stack.clear()
+        self.tabWidget.setCurrentIndex(self.TAB_RULES)
+        self.IN_DETAIL_VIEW[self.TAB_RULES] = False
+        self._restore_rules_tab_widgets(True)
+        self._rules_filter_mode = self.FILTER_RULES_ALL
+        self._set_rules_filter()
+        self._update_rule_focus_indicator()
+        return True
 
     def _get_rule(self, rule_name, node_name):
         """
@@ -4511,7 +4565,14 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
     # https://gis.stackexchange.com/questions/86398/how-to-disable-the-escape-key-for-a-dialog
     def keyPressEvent(self, event):
         if event.key() == QtCore.Qt.Key.Key_Escape:
+            modifiers = event.modifiers()
+            if modifiers & QtCore.Qt.KeyboardModifier.ShiftModifier:
+                self._clear_active_filters()
+                self._reset_rule_focus_navigation()
+                return
             if self._clear_active_filters():
+                return
+            if self._pop_rule_focus_breadcrumb():
                 return
             return
         super(StatsDialog, self).keyPressEvent(event)
