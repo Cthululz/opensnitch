@@ -470,6 +470,7 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
             "rule_focus": None
         }
         self._rule_focus_breadcrumbs = []
+        self._rule_reference_notice = None
         self._rules_filter_state_initialized = False
         self._setup_rules_action_subfilters()
         self._timeleft_timer = QtCore.QTimer(self)
@@ -2129,9 +2130,10 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
             self._restore_last_selected_row()
 
     def _cb_main_table_double_clicked(self, row):
-        if self._maybe_focus_rule_from_index(row):
+        origin_tab = self.tabWidget.currentIndex()
+        if self._maybe_focus_rule_from_index(row, origin_tab=origin_tab):
             return
-        prev_idx = self.tabWidget.currentIndex()
+        prev_idx = origin_tab
         data = row.data()
         idx = row.column()
         cur_idx = 1
@@ -2239,7 +2241,8 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
 
     def _cb_table_double_clicked(self, row):
         cur_idx = self.tabWidget.currentIndex()
-        if self._maybe_focus_rule_from_index(row):
+        origin_tab = self.tabWidget.currentIndex()
+        if self._maybe_focus_rule_from_index(row, origin_tab=origin_tab):
             return
         if self.IN_DETAIL_VIEW[cur_idx]:
             return
@@ -2854,13 +2857,17 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
         if model_index is None or not model_index.isValid():
             return False
         was_menu_active = getattr(self, "_context_menu_active", False)
+        try:
+            origin_tab = self.tabWidget.currentIndex()
+        except Exception:
+            origin_tab = self.TAB_MAIN
         self._context_menu_active = False
         try:
-            return self._maybe_focus_rule_from_index(model_index)
+            return self._maybe_focus_rule_from_index(model_index, origin_tab=origin_tab)
         finally:
             self._context_menu_active = was_menu_active
 
-    def _maybe_focus_rule_from_index(self, model_index):
+    def _maybe_focus_rule_from_index(self, model_index, origin_tab=None):
         if model_index is None or not model_index.isValid():
             return False
         try:
@@ -2879,11 +2886,11 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
             rule_name, node_name = self._get_rule_focus_target_from_row(model, model_index.row())
             if not rule_name or not node_name:
                 return False
-            return self._focus_rule_in_rules_tab(rule_name, node_name)
+            return self._focus_rule_in_rules_tab(rule_name, node_name, origin_tab=origin_tab)
         except Exception:
             return False
 
-    def _focus_rule_in_rules_tab(self, rule_name, node_name):
+    def _focus_rule_in_rules_tab(self, rule_name, node_name, origin_tab=None):
         """Ensure the given rule is visible and selected on the Rules tab."""
         rule_name = "" if rule_name is None else str(rule_name).strip()
         node_name = "" if node_name is None else str(node_name).strip()
@@ -2892,14 +2899,28 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
         try:
             records = self._db.get_rule(rule_name, node_name)
             if not records.next():
+                if origin_tab is None:
+                    try:
+                        origin_tab = self.tabWidget.currentIndex()
+                    except Exception:
+                        origin_tab = self.TAB_MAIN
+                self._set_rule_reference_notice(
+                    origin_tab,
+                    QC.translate("stats", "Rule \"{0}\" @ {1} no longer exists.").format(
+                        rule_name or QC.translate("stats", "(rule)"),
+                        node_name or QC.translate("stats", "(node)")
+                    )
+                )
                 return False
         except Exception:
             return False
 
-        try:
-            origin_tab = self.tabWidget.currentIndex()
-        except Exception:
-            origin_tab = self.TAB_MAIN
+        if origin_tab is None:
+            try:
+                origin_tab = self.tabWidget.currentIndex()
+            except Exception:
+                origin_tab = self.TAB_MAIN
+        self._clear_rule_reference_notice()
         self._remember_rule_focus_origin(origin_tab)
         self.tabWidget.setCurrentIndex(self.TAB_RULES)
         self.IN_DETAIL_VIEW[self.TAB_RULES] = False
@@ -2945,6 +2966,14 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
             cur_idx = self.tabWidget.currentIndex()
         except Exception:
             cur_idx = self.TAB_MAIN
+        notice = getattr(self, "_rule_reference_notice", None)
+        if notice:
+            if notice.get("tab") == cur_idx:
+                self.labelRowsCount.setStyleSheet(self.RULE_FOCUS_LABEL_STYLE)
+                self.labelRowsCount.setText(notice.get("text", ""))
+                return
+            else:
+                self._rule_reference_notice = None
         if cur_idx == self.TAB_RULES and self._is_rule_focus_active():
             state = getattr(self, "_rules_filter_state", None) or {}
             focus_rule, focus_node = state.get("rule_focus", ("", ""))
@@ -3003,6 +3032,7 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
         stack = getattr(self, "_rule_focus_breadcrumbs", None)
         if stack is not None:
             stack.clear()
+        self._clear_rule_reference_notice()
         self.tabWidget.setCurrentIndex(self.TAB_RULES)
         self.IN_DETAIL_VIEW[self.TAB_RULES] = False
         self._restore_rules_tab_widgets(True)
@@ -3010,6 +3040,25 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
         self._set_rules_filter()
         self._update_rule_focus_indicator()
         return True
+
+    def _set_rule_reference_notice(self, tab_index, text):
+        try:
+            tab_index = int(tab_index)
+        except Exception:
+            return
+        self._rule_reference_notice = {
+            "tab": tab_index,
+            "text": text
+        }
+        self._update_rule_focus_indicator()
+
+    def _clear_rule_reference_notice(self, tab_index=None):
+        notice = getattr(self, "_rule_reference_notice", None)
+        if not notice:
+            return
+        if tab_index is not None and notice.get("tab") != tab_index:
+            return
+        self._rule_reference_notice = None
 
     def _get_rule(self, rule_name, node_name):
         """
@@ -4470,6 +4519,10 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
         tableWidget.verticalScrollBar().sliderPressed.connect(self._cb_scrollbar_pressed)
         tableWidget.verticalScrollBar().sliderReleased.connect(self._cb_scrollbar_released)
         tableWidget.setTrackingColumn(tracking_column)
+        try:
+            tableWidget.setEditTriggers(QtWidgets.QAbstractItemView.EditTrigger.NoEditTriggers)
+        except Exception:
+            pass
 
         self.setQuery(model, "SELECT " + fields + " FROM " + table_name + group_by + " ORDER BY " + order_by + " " + sort_direction + limit)
         tableWidget.setModel(model)
