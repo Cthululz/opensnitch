@@ -3041,6 +3041,27 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
         self._update_rule_focus_indicator()
         return True
 
+    def _maybe_exit_detail_view(self):
+        """If the current tab is in detail view, exit back to the summary list."""
+        try:
+            cur_idx = self.tabWidget.currentIndex()
+        except Exception:
+            return False
+        try:
+            in_detail = self.IN_DETAIL_VIEW[cur_idx]
+        except Exception:
+            in_detail = False
+        if not in_detail:
+            return False
+        cmd = self.TABLES.get(cur_idx, {}).get('cmd')
+        if cmd is None:
+            return False
+        try:
+            cmd.click()
+            return True
+        except Exception:
+            return False
+
     def _set_rule_reference_notice(self, tab_index, text):
         try:
             tab_index = int(tab_index)
@@ -3060,18 +3081,15 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
             return
         self._rule_reference_notice = None
 
-    def _get_rule(self, rule_name, node_name):
+    def _get_rule(self, rule_name, node_name, suppress_ui=False):
         """
         get rule records, given the name of the rule and the node
         """
-        cur_idx = self.tabWidget.currentIndex()
         records = self._db.get_rule(rule_name, node_name)
         if records.next() == False:
-            print("[stats dialog] edit rule, no records: ", rule_name, node_name)
-            if self.TABLES[cur_idx]['cmd'] != None:
-                self.TABLES[cur_idx]['cmd'].click()
+            if not suppress_ui:
+                print("[stats dialog] edit rule, no records: ", rule_name, node_name)
             return None
-
         return records
 
     def _get_filter_line_clause(self, idx, text):
@@ -3283,7 +3301,7 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
         try:
             node_addr = (node_addr or "").strip()
             rule_name = (rule_name or "").strip()
-            rec = self._get_rule(rule_name, node_addr)
+            rec = self._get_rule(rule_name, node_addr, suppress_ui=True)
             if rec is None:
                 return False
             rule = Rule.new_from_records(rec)
@@ -4626,6 +4644,8 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
             if self._clear_active_filters():
                 return
             if self._pop_rule_focus_breadcrumb():
+                return
+            if self._maybe_exit_detail_view():
                 return
             return
         super(StatsDialog, self).keyPressEvent(event)
