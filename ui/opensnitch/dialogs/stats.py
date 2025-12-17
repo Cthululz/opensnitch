@@ -153,6 +153,7 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
     RULES_ACTION_ALL = "all"
     RULES_ACTION_ALLOW = "allow"
     RULES_ACTION_DENY = "deny"
+    RULE_FOCUS_LABEL_STYLE = "color: rgb(206, 92, 0); font-weight: bold;"
 
     FILTER_TREE_APPS = 0
     FILTER_TREE_NODES = 3
@@ -464,7 +465,9 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
             "item_row": self.RULES_TREE_APPS,
             "what": "",
             "what1": "",
-            "what2": ""
+            "what2": "",
+            "action_filter": None,
+            "rule_focus": None
         }
         self._rules_filter_state_initialized = False
         self._setup_rules_action_subfilters()
@@ -819,15 +822,6 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
         self.TABLES[self.TAB_MAIN]['view'].installEventFilter(self)
         self.TABLES[self.TAB_MAIN]['filterLine'].textChanged.connect(self._cb_events_filter_line_changed)
 
-        self.TABLES[self.TAB_MAIN]['view'].setContextMenuPolicy(QtCore.Qt.ContextMenuPolicy.CustomContextMenu)
-        self.TABLES[self.TAB_MAIN]['view'].customContextMenuRequested.connect(self._cb_table_context_menu)
-        self.TABLES[self.TAB_RULES]['view'].setContextMenuPolicy(QtCore.Qt.ContextMenuPolicy.CustomContextMenu)
-        self.TABLES[self.TAB_RULES]['view'].customContextMenuRequested.connect(self._cb_table_context_menu)
-        self.TABLES[self.TAB_FIREWALL]['view'].setContextMenuPolicy(QtCore.Qt.ContextMenuPolicy.CustomContextMenu)
-        self.TABLES[self.TAB_FIREWALL]['view'].customContextMenuRequested.connect(self._cb_table_context_menu)
-        self.TABLES[self.TAB_ALERTS]['view'].setContextMenuPolicy(QtCore.Qt.ContextMenuPolicy.CustomContextMenu)
-        self.TABLES[self.TAB_ALERTS]['view'].customContextMenuRequested.connect(self._cb_table_context_menu)
-
         for idx in range(1,10):
             if self.TABLES[idx]['cmd'] != None:
                 self.TABLES[idx]['cmd'].hide()
@@ -841,6 +835,13 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
             self.TABLES[idx]['view'].doubleClicked.connect(self._cb_table_double_clicked)
             self.TABLES[idx]['view'].selectionModel().selectionChanged.connect(self._cb_table_selection_changed)
             self.TABLES[idx]['view'].installEventFilter(self)
+
+        for idx in self.TABLES:
+            view = self.TABLES[idx].get('view')
+            if view is None:
+                continue
+            view.setContextMenuPolicy(QtCore.Qt.ContextMenuPolicy.CustomContextMenu)
+            view.customContextMenuRequested.connect(self._cb_table_context_menu)
 
         self.TABLES[self.TAB_FIREWALL]['view'].rowsReordered.connect(self._cb_fw_table_rows_reordered)
 
@@ -1148,10 +1149,15 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
             if not selection:
                 return False
 
+            rule_name = model.index(selection[0].row(), self.COL_RULES).data()
+            node_name = model.index(selection[0].row(), self.COL_NODE).data()
             menu = QtWidgets.QMenu()
             _menu_details = menu.addAction(QC.translate("stats", "Details"))
             rulesMenu = QtWidgets.QMenu(QC.translate("stats", "Rules"))
             _menu_new_rule = rulesMenu.addAction(QC.translate("stats", "New"))
+            _menu_goto_rule = None
+            if rule_name not in (None, ""):
+                _menu_goto_rule = rulesMenu.addAction(QC.translate("stats", "Show in list"))
             menu.addMenu(rulesMenu)
 
             # move away menu a few pixels to the right, to avoid clicking on it by mistake
@@ -1166,12 +1172,55 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
                 coltime = model.index(selection[0].row(), self.COL_TIME).data()
                 o = ConnDetails(self)
                 o.showByField("time", coltime)
+            elif action == _menu_goto_rule:
+                self._focus_rule_in_rules_tab(rule_name, node_name)
 
         except Exception as e:
             print(e)
         finally:
             self._clear_rows_selection()
             return True
+
+    def _configure_rule_reference_context_menu(self, pos):
+        """Context menu for tables that only need the rule focus shortcut."""
+        table = self._get_active_table()
+        if table is None:
+            return False
+        model = table.model()
+        if model is None:
+            return False
+        selection_model = table.selectionModel()
+        try:
+            index = table.indexAt(pos)
+            if not index.isValid():
+                if selection_model is None:
+                    return False
+                selection = selection_model.selectedRows()
+                if not selection:
+                    return False
+                index = selection[0]
+            else:
+                try:
+                    table.selectRow(index.row())
+                except Exception:
+                    pass
+            rule_name, node_name = self._get_rule_focus_target_from_row(model, index.row())
+            if not rule_name or not node_name:
+                return False
+            menu = QtWidgets.QMenu()
+            _menu_goto_rule = menu.addAction(QC.translate("stats", "Show in list"))
+            point = QtCore.QPoint(pos.x()+10, pos.y()+5)
+            action = menu.exec(table.mapToGlobal(point))
+            if action == _menu_goto_rule:
+                self._focus_rule_in_rules_tab(rule_name, node_name)
+        except Exception as e:
+            print(e)
+        finally:
+            try:
+                self._clear_rows_selection()
+            except Exception:
+                pass
+        return False
 
     def _configure_fwrules_contextual_menu(self, pos):
         try:
@@ -1910,27 +1959,30 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
 
         self.LAST_TAB = index
         self._refresh_active_table()
+        self._update_rule_focus_indicator()
 
     def _cb_table_context_menu(self, pos):
         cur_idx = self.tabWidget.currentIndex()
-        if cur_idx != self.TAB_RULES and cur_idx != self.TAB_MAIN:
-            # the only tables with context menu for now are events and rules table
-            return
-        if self.IN_DETAIL_VIEW[self.TAB_RULES] == True:
+        if cur_idx == self.TAB_RULES and self.IN_DETAIL_VIEW[self.TAB_RULES]:
             return
 
         self._context_menu_active = True
-        if cur_idx == self.TAB_MAIN:
-            refresh_table = self._configure_events_contextual_menu(pos)
-        elif cur_idx == self.TAB_RULES:
-            if self.fwTable.isVisible():
-                refresh_table = self._configure_fwrules_contextual_menu(pos)
-            elif self.alertsTable.isVisible():
-                refresh_table = self._configure_alerts_contextual_menu(pos)
+        refresh_table = False
+        try:
+            if cur_idx == self.TAB_MAIN:
+                refresh_table = self._configure_events_contextual_menu(pos)
+            elif cur_idx == self.TAB_RULES:
+                if self.fwTable.isVisible():
+                    refresh_table = self._configure_fwrules_contextual_menu(pos)
+                elif self.alertsTable.isVisible():
+                    refresh_table = self._configure_alerts_contextual_menu(pos)
+                else:
+                    refresh_table = self._configure_rules_contextual_menu(pos)
             else:
-                refresh_table = self._configure_rules_contextual_menu(pos)
+                self._configure_rule_reference_context_menu(pos)
+        finally:
+            self._context_menu_active = False
 
-        self._context_menu_active = False
         if refresh_table:
             self._refresh_active_table()
 
@@ -2070,6 +2122,8 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
             self._restore_last_selected_row()
 
     def _cb_main_table_double_clicked(self, row):
+        if self._maybe_focus_rule_from_index(row):
+            return
         prev_idx = self.tabWidget.currentIndex()
         data = row.data()
         idx = row.column()
@@ -2178,6 +2232,8 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
 
     def _cb_table_double_clicked(self, row):
         cur_idx = self.tabWidget.currentIndex()
+        if self._maybe_focus_rule_from_index(row):
+            return
         if self.IN_DETAIL_VIEW[cur_idx]:
             return
 
@@ -2694,6 +2750,179 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
         if view != None:
             ret = len(view.selectionModel().selectedRows(0)) > 0
         return ret
+
+    def _find_rules_node_tree_item(self, node_name):
+        nodes_item = self.rulesTreePanel.topLevelItem(self.RULES_TREE_NODES)
+        if nodes_item is None:
+            return (None, -1)
+        for idx in range(nodes_item.childCount()):
+            child = nodes_item.child(idx)
+            if child is not None and child.text(0) == node_name:
+                return (child, idx)
+        return (None, -1)
+
+    def _get_column_index_by_name(self, model, target_name):
+        if model is None or target_name is None:
+            return None
+        try:
+            column_count = model.columnCount()
+        except Exception:
+            column_count = 0
+        for col in range(column_count):
+            header = model.headerData(col, QtCore.Qt.Orientation.Horizontal)
+            if not header:
+                continue
+            if str(header).replace(" ", "") == target_name:
+                return col
+        return None
+
+    def _get_rule_focus_target_from_row(self, model, row):
+        """Return (rule_name, node_name) for the given model row, if present."""
+        if model is None:
+            return (None, None)
+        try:
+            row = int(row)
+        except Exception:
+            return (None, None)
+        rule_name = None
+        node_name = None
+        try:
+            cur_tab = self.tabWidget.currentIndex()
+        except Exception:
+            cur_tab = self.TAB_MAIN
+        try:
+            if cur_tab == self.TAB_MAIN:
+                if self.COL_RULES < model.columnCount():
+                    idx = model.index(row, self.COL_RULES)
+                    if idx.isValid():
+                        rule_name = idx.data()
+                if self.COL_NODE < model.columnCount():
+                    idx = model.index(row, self.COL_NODE)
+                    if idx.isValid():
+                        node_name = idx.data()
+            else:
+                rule_col = self._get_column_index_by_name(model, self.COL_STR_RULE)
+                if rule_col is not None:
+                    idx = model.index(row, rule_col)
+                    if idx.isValid():
+                        rule_name = idx.data()
+                node_col = self._get_column_index_by_name(model, self.COL_STR_NODE)
+                if node_col is not None:
+                    idx = model.index(row, node_col)
+                    if idx.isValid():
+                        node_name = idx.data()
+        except Exception:
+            return (None, None)
+        return (rule_name, node_name)
+
+    def _maybe_focus_rule_from_index(self, model_index):
+        if model_index is None or not model_index.isValid():
+            return False
+        try:
+            model = model_index.model()
+            if model is None:
+                return False
+            cur_tab = self.tabWidget.currentIndex()
+            if cur_tab == self.TAB_MAIN:
+                if model_index.column() != self.COL_RULES:
+                    return False
+            else:
+                header = model.headerData(model_index.column(), QtCore.Qt.Orientation.Horizontal)
+                normalized = str(header).replace(" ", "") if header else ""
+                if normalized != self.COL_STR_RULE:
+                    return False
+            rule_name, node_name = self._get_rule_focus_target_from_row(model, model_index.row())
+            if not rule_name or not node_name:
+                return False
+            return self._focus_rule_in_rules_tab(rule_name, node_name)
+        except Exception:
+            return False
+
+    def _focus_rule_in_rules_tab(self, rule_name, node_name):
+        """Ensure the given rule is visible and selected on the Rules tab."""
+        rule_name = "" if rule_name is None else str(rule_name).strip()
+        node_name = "" if node_name is None else str(node_name).strip()
+        if rule_name == "" or node_name == "":
+            return False
+        try:
+            records = self._db.get_rule(rule_name, node_name)
+            if not records.next():
+                return False
+        except Exception:
+            return False
+
+        self.tabWidget.setCurrentIndex(self.TAB_RULES)
+        self.IN_DETAIL_VIEW[self.TAB_RULES] = False
+        self._restore_rules_tab_widgets(True)
+        self.rulesTable.setVisible(True)
+        self.alertsTable.setVisible(False)
+        self.fwTable.setVisible(False)
+        self.rulesScrollBar.setVisible(True)
+        self._rules_filter_mode = self.FILTER_RULES_ALL
+
+        node_item, node_row = self._find_rules_node_tree_item(node_name)
+        if node_item is not None and node_row >= 0:
+            try:
+                self.rulesTreePanel.setCurrentItem(node_item)
+            except Exception:
+                pass
+            self._set_rules_filter(
+                self.RULES_TREE_NODES,
+                node_row,
+                node_name,
+                rule_focus=(rule_name, node_name)
+            )
+        else:
+            self._set_rules_filter(rule_focus=(rule_name, node_name))
+
+        try:
+            self.rulesTable.selectItem(rule_name, self.COL_R_NAME)
+        except Exception:
+            pass
+        return True
+
+    def _is_rule_focus_active(self):
+        state = getattr(self, "_rules_filter_state", None)
+        if not state:
+            return False
+        focus = state.get("rule_focus")
+        if isinstance(focus, tuple):
+            return any(focus)
+        return bool(focus)
+
+    def _update_rule_focus_indicator(self, model=None):
+        try:
+            cur_idx = self.tabWidget.currentIndex()
+        except Exception:
+            cur_idx = self.TAB_MAIN
+        if cur_idx == self.TAB_RULES and self._is_rule_focus_active():
+            state = getattr(self, "_rules_filter_state", None) or {}
+            focus_rule, focus_node = state.get("rule_focus", ("", ""))
+            rule_txt = focus_rule or QC.translate("stats", "(rule)")
+            node_txt = focus_node or QC.translate("stats", "(node)")
+            focus_text = QC.translate("stats", "Rule filter: {0} @ {1} (Esc to clear)").format(
+                rule_txt,
+                node_txt
+            )
+            self.labelRowsCount.setStyleSheet(self.RULE_FOCUS_LABEL_STYLE)
+            self.labelRowsCount.setText(focus_text)
+            return
+
+        self.labelRowsCount.setStyleSheet("")
+        if cur_idx != self.TAB_MAIN:
+            if model is None:
+                try:
+                    view = self.TABLES[cur_idx]['view']
+                    if view is not None:
+                        model = view.model()
+                except Exception:
+                    model = None
+            if model is not None and hasattr(model, "totalRowCount"):
+                self.labelRowsCount.setText("{0}".format(model.totalRowCount))
+            else:
+                self.labelRowsCount.setText("")
+        else:
+            self.labelRowsCount.setText("")
 
     def _get_rule(self, rule_name, node_name):
         """
@@ -3524,7 +3753,7 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
             self.nodeStartButton.setChecked(True)
             self.nodeStartButton.setDown(True)
 
-    def _set_rules_filter(self, parent_row=-1, item_row=0, what="", what1="", what2="", action_filter=None):
+    def _set_rules_filter(self, parent_row=-1, item_row=0, what="", what1="", what2="", action_filter=None, rule_focus=None):
         self._rules_filter_state_initialized = True
         self._rules_filter_state = {
             "parent_row": parent_row,
@@ -3532,7 +3761,8 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
             "what": "" if what is None else what,
             "what1": "" if what1 is None else what1,
             "what2": "" if what2 is None else what2,
-            "action_filter": action_filter
+            "action_filter": action_filter,
+            "rule_focus": rule_focus
         }
         section = self.FILTER_TREE_APPS
         selection_value = what
@@ -3595,6 +3825,9 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
                 base = base.rstrip()
             return base + " AND " + clause
 
+        def _escape(value):
+            return "" if value is None else str(value).replace("'", "''")
+
         if section == self.FILTER_TREE_APPS:
             if what == self.RULES_TYPE_TEMPORARY:
                 what = "WHERE r.duration != '%s'" % Config.DURATION_ALWAYS
@@ -3637,6 +3870,13 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
                     "r.action IN ('{0}','{1}')".format(Config.ACTION_DENY, Config.ACTION_REJECT)
                 )
 
+        if rule_focus:
+            focus_name, focus_node = rule_focus
+            if focus_name:
+                what = _append_condition(what, "r.name = '{0}'".format(_escape(focus_name)))
+            if focus_node:
+                what = _append_condition(what, "r.node = '{0}'".format(_escape(focus_node)))
+
         rules_view = self.TABLES[self.TAB_RULES]['view']
         model = rules_view.model()
         self.setQuery(model, "SELECT {0} FROM rules as r {1} {2} {3}".format(
@@ -3646,6 +3886,7 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
             self._get_limit()
         ))
         rules_view.refresh()
+        self._update_rule_focus_indicator(model)
 
     def _reapply_rules_filter(self, update_timeleft=False):
         if not getattr(self, "_rules_filter_state_initialized", False):
@@ -3660,7 +3901,9 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
                 "item_row": self.RULES_TREE_APPS,
                 "what": "",
                 "what1": "",
-                "what2": ""
+                "what2": "",
+                "action_filter": None,
+                "rule_focus": None
             }
         self._set_rules_filter(
             state["parent_row"],
@@ -3668,7 +3911,8 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
             state["what"],
             state["what1"],
             state["what2"],
-            state.get("action_filter")
+            state.get("action_filter"),
+            state.get("rule_focus")
         )
         if update_timeleft:
             self._update_timeleft_column()
@@ -4233,8 +4477,11 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
 
     # https://gis.stackexchange.com/questions/86398/how-to-disable-the-escape-key-for-a-dialog
     def keyPressEvent(self, event):
-        if not event.key() == QtCore.Qt.Key.Key_Escape:
-            super(StatsDialog, self).keyPressEvent(event)
+        if event.key() == QtCore.Qt.Key.Key_Escape:
+            if self._clear_active_filters():
+                return
+            return
+        super(StatsDialog, self).keyPressEvent(event)
 
     def setQuery(self, model, q):
         if self._context_menu_active == True or self.scrollbar_active == True:
@@ -4246,9 +4493,44 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
                 if model.lastError().isValid():
                     print("setQuery() error: ", model.lastError().text())
 
-                if self.tabWidget.currentIndex() != self.TAB_MAIN:
-                    self.labelRowsCount.setText("{0}".format(model.totalRowCount))
-                else:
-                    self.labelRowsCount.setText("")
+                self._update_rule_focus_indicator(model)
             except Exception as e:
                 print(self._address, "setQuery() exception: ", e)
+    def _clear_active_filters(self):
+        """Clear text/rule filters when the user presses ESC."""
+        cleared = False
+        filter_widgets = []
+        try:
+            if getattr(self, "filterLine", None) is not None:
+                filter_widgets.append(self.filterLine)
+        except Exception:
+            pass
+        try:
+            cur_idx = self.tabWidget.currentIndex()
+            table_filter = self.TABLES.get(cur_idx, {}).get('filterLine')
+            if table_filter and table_filter not in filter_widgets:
+                filter_widgets.append(table_filter)
+        except Exception:
+            pass
+        for widget in filter_widgets:
+            try:
+                if widget is not None and widget.text().strip():
+                    widget.clear()
+                    cleared = True
+            except Exception:
+                continue
+        state = getattr(self, "_rules_filter_state", None)
+        if state and state.get("rule_focus"):
+            self._set_rules_filter(
+                state.get("parent_row", -1),
+                state.get("item_row", self.RULES_TREE_APPS),
+                state.get("what", ""),
+                state.get("what1", ""),
+                state.get("what2", ""),
+                state.get("action_filter"),
+                None
+            )
+            cleared = True
+        if cleared:
+            self._update_rule_focus_indicator()
+        return cleared
