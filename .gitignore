@@ -7,3 +7,9 @@ daemon/.gopath/
 ui/.venv/
 ui/build/
 ui/dist/
+.gemini/
+rules/
+ui/opensnitch/proto/ui_pb2_grpc.py
+ui/opensnitch/i18n/
+ui/rules/
+ui/i18n/locales/*/*.qm
