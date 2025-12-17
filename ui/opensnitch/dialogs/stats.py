@@ -4685,9 +4685,9 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
                 self._reset_rule_focus_navigation()
                 self._clear_navigation_history()
                 return
-            if self._clear_active_filters():
-                return
             if self._pop_rule_focus_breadcrumb():
+                return
+            if self._clear_active_filters():
                 return
             if self._maybe_exit_detail_view():
                 return
