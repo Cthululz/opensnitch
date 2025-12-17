@@ -1150,14 +1150,16 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
                 return False
 
             rule_name = model.index(selection[0].row(), self.COL_RULES).data()
-            node_name = model.index(selection[0].row(), self.COL_NODE).data()
             menu = QtWidgets.QMenu()
             _menu_details = menu.addAction(QC.translate("stats", "Details"))
             rulesMenu = QtWidgets.QMenu(QC.translate("stats", "Rules"))
             _menu_new_rule = rulesMenu.addAction(QC.translate("stats", "New"))
             _menu_goto_rule = None
-            if rule_name not in (None, ""):
-                _menu_goto_rule = rulesMenu.addAction(QC.translate("stats", "Show in list"))
+            rule_index = None
+            if rule_name not in (None, "") and self.COL_RULES < model.columnCount():
+                rule_index = model.index(selection[0].row(), self.COL_RULES)
+                if rule_index is not None and rule_index.isValid():
+                    _menu_goto_rule = rulesMenu.addAction(QC.translate("stats", "Show rule"))
             menu.addMenu(rulesMenu)
 
             # move away menu a few pixels to the right, to avoid clicking on it by mistake
@@ -1172,8 +1174,8 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
                 coltime = model.index(selection[0].row(), self.COL_TIME).data()
                 o = ConnDetails(self)
                 o.showByField("time", coltime)
-            elif action == _menu_goto_rule:
-                self._focus_rule_in_rules_tab(rule_name, node_name)
+            elif action == _menu_goto_rule and rule_index is not None:
+                self._maybe_focus_rule_from_index(rule_index)
 
         except Exception as e:
             print(e)
@@ -1199,25 +1201,29 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
                 if not selection:
                     return False
                 index = selection[0]
-            else:
-                try:
-                    table.selectRow(index.row())
-                except Exception:
-                    pass
-            rule_name, node_name = self._get_rule_focus_target_from_row(model, index.row())
+            row = index.row()
+            rule_name, node_name = self._get_rule_focus_target_from_row(model, row)
             if not rule_name or not node_name:
                 return False
+            rule_index = self._get_rule_index_for_row(model, row)
+            if rule_index is None:
+                return False
+            try:
+                table.selectRow(row)
+            except Exception:
+                pass
             menu = QtWidgets.QMenu()
-            _menu_goto_rule = menu.addAction(QC.translate("stats", "Show in list"))
+            _menu_goto_rule = menu.addAction(QC.translate("stats", "Show rule"))
             point = QtCore.QPoint(pos.x()+10, pos.y()+5)
             action = menu.exec(table.mapToGlobal(point))
             if action == _menu_goto_rule:
-                self._focus_rule_in_rules_tab(rule_name, node_name)
+                table.clearSelection()
+                self._maybe_focus_rule_from_index(rule_index)
         except Exception as e:
             print(e)
         finally:
             try:
-                self._clear_rows_selection()
+                table.clearSelection()
             except Exception:
                 pass
         return False
@@ -2814,6 +2820,33 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
         except Exception:
             return (None, None)
         return (rule_name, node_name)
+
+    def _get_rule_index_for_row(self, model, row):
+        if model is None:
+            return None
+        try:
+            row = int(row)
+        except Exception:
+            return None
+        try:
+            cur_tab = self.tabWidget.currentIndex()
+        except Exception:
+            cur_tab = self.TAB_MAIN
+        try:
+            if cur_tab == self.TAB_MAIN:
+                if self.COL_RULES >= model.columnCount():
+                    return None
+                index = model.index(row, self.COL_RULES)
+                return index if index.isValid() else None
+            rule_col = self._get_column_index_by_name(model, self.COL_STR_RULE)
+            if rule_col is None:
+                return None
+            index = model.index(row, rule_col)
+            if not index.isValid():
+                return None
+            return index
+        except Exception:
+            return None
 
     def _maybe_focus_rule_from_index(self, model_index):
         if model_index is None or not model_index.isValid():
