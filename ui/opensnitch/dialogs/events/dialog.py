@@ -991,6 +991,14 @@ class StatsDialog(menus.MenusManager, menu_actions.MenuActions, views.ViewsManag
         self.rulesTable.setVisible(not showFwTable and not showAlertsTable)
         self.rulesScrollBar.setVisible(not showFwTable and not showAlertsTable)
 
+        # Handle Applications and Networks top-level clicks - show summary
+        if parent_row == -1 and item_row == constants.RULES_TREE_APPS:
+            self.queries._show_applications_summary()
+            return
+        elif parent_row == -1 and item_row == constants.RULES_TREE_NETWORKS:
+            self.queries._show_networks_summary()
+            return
+
         self.queries.set_rules_filter(parent_row, item_row, item_text, node_addr, fw_table)
 
     def _cb_splitter_moved(self, tab, pos, index):

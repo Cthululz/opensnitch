@@ -739,6 +739,60 @@ class Database:
 
         return results
 
+    def get_rule_targets_summary(self, node_addr=None, operand_filter=None, is_permanent=None):
+        """
+        Get summary of unique targets grouped by duration (permanent/temporary).
+        Returns list of dicts: [{"target": "path/or/ip", "permanent_count": N, "temporary_count": M}]
+        """
+        results = []
+        # For applications: process.path
+        # For networks: dest.ip, dest.host, dest.network
+        qstr = """
+            SELECT operator_operand, operator_data, 
+                   SUM(CASE WHEN duration = 'always' THEN 1 ELSE 0 END) as permanent,
+                   SUM(CASE WHEN duration != 'always' THEN 1 ELSE 0 END) as temporary,
+                   COUNT(*) as total
+            FROM rules
+        """
+        conditions = []
+        if node_addr is not None:
+            conditions.append("node=?")
+        if operand_filter is not None:
+            if operand_filter == "process":
+                conditions.append("(operator_operand = 'process.path' OR operator_operand = 'process.command')")
+            elif operand_filter == "network":
+                conditions.append("(operator_operand = 'dest.ip' OR operator_operand = 'dest.host' OR operator_operand = 'dest.network')")
+
+        if conditions:
+            qstr += " WHERE " + " AND ".join(conditions)
+
+        qstr += " GROUP BY operator_data ORDER BY total DESC"
+
+        q = QSqlQuery(qstr, self.db)
+        if node_addr is not None:
+            q.prepare(qstr)
+            q.addBindValue(node_addr)
+        else:
+            q.prepare(qstr)
+
+        if not q.exec():
+            self.logger.error("get_rule_targets_summary() error: %s", q.lastError().driverText())
+            return results
+
+        while q.next():
+            target = q.value(1)
+            perm = q.value(2)
+            temp = q.value(3)
+            total = q.value(4)
+            results.append({
+                "target": target,
+                "permanent_count": perm,
+                "temporary_count": temp,
+                "total": total
+            })
+
+        return results
+
     def insert_rule(self, rule, node_addr):
         self.insert("rules",
             "(time, node, name, description, enabled, precedence, nolog, action, duration, operator_type, operator_sensitive, operator_operand, operator_data)",

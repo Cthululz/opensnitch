@@ -394,6 +394,14 @@ class Queries:
             elif item_row == constants.RULES_TREE_FIREWALL:
                 self.set_fw_rules_filter(parent_row, item_row, what, what1, what2)
                 return
+            elif item_row == constants.RULES_TREE_APPS:
+                # Show summary of all applications
+                self._show_applications_summary()
+                return
+            elif item_row == constants.RULES_TREE_NETWORKS:
+                # Show summary of all network targets
+                self._show_networks_summary()
+                return
             else:
                 section=constants.FILTER_TREE_APPS
                 what=""
@@ -626,4 +634,38 @@ class Queries:
                     self.win.labelRowsCount.setText("")
             except Exception as e:
                 print(self.win._address, "setQuery() exception: ", e)
+
+    def _show_applications_summary(self):
+        """Show summary of unique applications with permanent/temporary rule counts"""
+        model = self.win.get_active_table().model()
+        # Query that groups by operator_data and counts permanent vs temporary
+        query = """
+            SELECT 
+                operator_data as "Target",
+                SUM(CASE WHEN duration = 'always' THEN 1 ELSE 0 END) as "Permanent",
+                SUM(CASE WHEN duration != 'always' THEN 1 ELSE 0 END) as "Temporary",
+                COUNT(*) as "Total"
+            FROM rules
+            WHERE operator_operand IN ('process.path', 'process.command')
+            GROUP BY operator_data
+            ORDER BY Total DESC
+        """
+        self.setQuery(model, query)
+
+    def _show_networks_summary(self):
+        """Show summary of unique network targets with permanent/temporary rule counts"""
+        model = self.win.get_active_table().model()
+        # Query that groups by operator_data and counts permanent vs temporary for network targets
+        query = """
+            SELECT 
+                operator_data as "Target",
+                SUM(CASE WHEN duration = 'always' THEN 1 ELSE 0 END) as "Permanent",
+                SUM(CASE WHEN duration != 'always' THEN 1 ELSE 0 END) as "Temporary",
+                COUNT(*) as "Total"
+            FROM rules
+            WHERE operator_operand IN ('dest.ip', 'dest.host', 'dest.network')
+            GROUP BY operator_data
+            ORDER BY Total DESC
+        """
+        self.setQuery(model, query)
 
