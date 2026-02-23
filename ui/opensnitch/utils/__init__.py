@@ -258,20 +258,17 @@ class FileDialog():
 
     @staticmethod
     def save(parent):
-        options = QtWidgets.QFileDialog.Options()
-        fileName, _ = QtWidgets.QFileDialog.getSaveFileName(parent, "", "","All Files (*)", options=options)
+        fileName, _ = QtWidgets.QFileDialog.getSaveFileName(parent, "", "","All Files (*)")
         return fileName
 
     @staticmethod
     def select(parent):
-        options = QtWidgets.QFileDialog.Options()
-        fileName, _ = QtWidgets.QFileDialog.getOpenFileName(parent, "", "","All Files (*)", options=options)
+        fileName, _ = QtWidgets.QFileDialog.getOpenFileName(parent, "", "","All Files (*)")
         return fileName
 
     @staticmethod
     def select_dir(parent, current_dir):
-        options = QtWidgets.QFileDialog.Options()
-        fileName = QtWidgets.QFileDialog.getExistingDirectory(parent, "", current_dir, options)
+        fileName = QtWidgets.QFileDialog.getExistingDirectory(parent, "", current_dir)
         return fileName
 
 # https://stackoverflow.com/questions/29503339/how-to-get-all-values-from-python-enum-class
@@ -388,6 +385,8 @@ class Icons():
         'preferences-system': "SP_FileDialogListView",
         'preferences-desktop': "SP_FileDialogListView",
         'security-high': "SP_VistaShield",
+        'security-medium': "SP_VistaShield",
+        'security-low': "SP_VistaShield",
         'go-previous': "SP_ArrowLeft",
         'go-jump': "SP_CommandLink",
         'go-down': "SP_TitleBarUnshadeButton",
@@ -413,7 +412,12 @@ class Icons():
         'edit-clear-all': "SP_DialogResetButton",
         'reload': "SP_DialogResetButton",
         'dialog-information': "SP_MessageBoxInformation",
-        'dialog-warning': "SP_MessageBoxWarning"
+        'dialog-warning': "SP_MessageBoxWarning",
+        'pop-ups': 'SP_TitleBarNormalButton',
+        'window-new': 'SP_TitleBarMaxButton',
+        'computer': 'SP_ComputerIcon',
+        'drive-harddisk': 'SP_DriveHDIcon',
+        'network-server': 'SP_DesktopIcon'
     }
 
     @staticmethod

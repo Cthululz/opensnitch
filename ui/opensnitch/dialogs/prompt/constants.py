@@ -4,6 +4,8 @@ PAGE_MAIN = 2
 PAGE_DETAILS = 0
 PAGE_CHECKSUMS = 1
 
+WARNING_LABEL = "#warning-checksum"
+
 DEFAULT_TIMEOUT = 15
 
 # don't translate
@@ -18,6 +20,14 @@ FIELD_DST_PORT      = "dst_port"
 FIELD_DST_NETWORK   = "dst_network"
 FIELD_DST_HOST      = "simple_host"
 FIELD_APPIMAGE      = "appimage_path"
+FIELD_SNAP          = "snap_path"
+
+TARGET_IDX_PROC_PATH = 0
+TARGET_IDX_PROC_CMDLINE = 1
+TARGET_IDX_DST_PORT = 2
+TARGET_IDX_DST_IP = 3
+TARGET_IDX_UID = 4
+TARGET_IDX_PID = 5
 
 DURATION_30s    = "30s"
 DURATION_5m     = "5m"
@@ -28,8 +38,14 @@ DURATION_12h     = "12h"
 # don't translate
 
 APPIMAGE_PREFIX = "/tmp/.mount_"
+SNAP_PREFIX = "/snap"
 
 # label displayed in the pop-up combo
 DURATION_session = QC.translate("popups", "until reboot")
 # label displayed in the pop-up combo
 DURATION_forever = QC.translate("popups", "forever")
+
+DSTIP_LBL_CLICKED=0
+DSTPORT_LBL_CLICKED=1
+USER_LBL_CLICKED=2
+CHECKSUM_LBL_CLICKED=3

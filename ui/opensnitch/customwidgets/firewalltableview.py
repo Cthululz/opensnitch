@@ -81,6 +81,9 @@ class FirewallTableModel(QStandardItemModel):
             return ""
         return " ".join(str(value).replace("\r", " ").replace("\n", " ").split())
 
+    def headers(self):
+        return self.headersAll
+
     def filterByNode(self, addr):
         self.activeFilter = self.FILTER_BY_NODE
         self.fillVisibleRows(0, True, addr)
@@ -224,9 +227,8 @@ class FirewallTableModel(QStandardItemModel):
                 cols.append(item)
             self.appendRow(cols)
 
-    def dumpRows(self):
-        for rule in self.lastRules:
-            print(rule)
+    def dumpRows(self, nolimits=None):
+        return self._fw.get_rules()
 
 class FirewallTableView(QTableView):
     # how many rows can potentially be displayed in viewport

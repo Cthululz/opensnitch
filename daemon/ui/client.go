@@ -218,7 +218,7 @@ func (c *Client) poller() {
 			if c.Connected() == true {
 				// if the client is connected and ready, send a ping
 				if err := c.ping(time.Now()); err != nil {
-					log.Warning("Error while pinging UI service: %s, state: %v", err, c.con.GetState())
+					log.Debug("Error while pinging UI service: %s, state: %v", err, c.con.GetState())
 				}
 			}
 
@@ -326,14 +326,21 @@ func (c *Client) ping(ts time.Time) (err error) {
 	c.Lock()
 	defer c.Unlock()
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
-	reqID := uint64(ts.UnixNano())
+	serializedStats := c.stats.Serialize()
+	if serializedStats == nil {
+		log.Trace("client, no stats")
+		return nil
+	}
 
+	reqID := uint64(ts.UnixNano())
 	pReq := &protocol.PingRequest{
 		Id:    reqID,
-		Stats: c.stats.Serialize(),
+		Stats: serializedStats,
 	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+
 	c.stats.RLock()
 	pong, err := c.client.Ping(ctx, pReq)
 	c.stats.RUnlock()
