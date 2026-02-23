@@ -2714,10 +2714,8 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
             temp_font = QFont()
             temp_font.setPointSize(10)
             temporary_item.setFont(0, temp_font)
-
-            print("DEBUG: Network targets item added successfully")
         except Exception as e:
-            print(f"DEBUG ERROR adding network targets: {e}")
+            print(f"Error adding network targets: {e}")
 
     def _find_tree_fw_items(self, item_data):
         """find fw items by data stored in UserRole role.

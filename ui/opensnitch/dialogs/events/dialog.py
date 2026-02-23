@@ -1234,10 +1234,8 @@ class StatsDialog(menus.MenusManager, menu_actions.MenuActions, views.ViewsManag
             temp_font = QFont()
             temp_font.setPointSize(10)
             temporary_item.setFont(0, temp_font)
-
-            print("DEBUG: Network targets item added successfully")
         except Exception as e:
-            print(f"DEBUG ERROR adding network targets: {e}")
+            print(f"Error adding network targets: {e}")
 
     def _add_rulesTree_nodes(self):
         if self.nodes_count() == 0:
