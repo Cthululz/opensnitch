@@ -139,6 +139,7 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
     RULES_TREE_ALERTS = 1
     RULES_TREE_NODES = 2
     RULES_TREE_FIREWALL = 3
+    RULES_TREE_NETWORKS = 4  # New: Network targets (dest.ip, dest.host, dest.network)
 
     RULES_TREE_PERMANENT = 0
     RULES_TREE_TEMPORARY = 1

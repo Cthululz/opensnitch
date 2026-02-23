@@ -91,6 +91,7 @@ RULES_TREE_APPS  = 0
 RULES_TREE_ALERTS = 1
 RULES_TREE_NODES = 2
 RULES_TREE_FIREWALL = 3
+RULES_TREE_NETWORKS = 4  # New: Network targets (dest.ip, dest.host, dest.network)
 
 RULES_TREE_PERMANENT = 0
 RULES_TREE_TEMPORARY = 1
@@ -105,6 +106,7 @@ RULES_TYPE_TEMPORARY = 1
 
 FILTER_TREE_APPS = 0
 FILTER_TREE_NODES = 3
+FILTER_TREE_NETWORKS = 4  # New: filter by network targets (dest.ip, dest.host, dest.network)
 
 FILTER_TREE_FW_NODE = 0
 FILTER_TREE_FW_TABLE = 1

@@ -406,6 +406,14 @@ class Queries:
                 section=constants.FILTER_TREE_APPS
                 what=constants.RULES_TYPE_TEMPORARY
 
+        elif parent_row == constants.RULES_TREE_NETWORKS:
+            if item_row == constants.RULES_TREE_PERMANENT:
+                section=constants.FILTER_TREE_NETWORKS
+                what=constants.RULES_TYPE_PERMANENT
+            elif item_row == constants.RULES_TREE_TEMPORARY:
+                section=constants.FILTER_TREE_NETWORKS
+                what=constants.RULES_TYPE_TEMPORARY
+
         elif parent_row == constants.RULES_TREE_NODES:
             section=constants.FILTER_TREE_NODES
 
@@ -418,6 +426,20 @@ class Queries:
                 what = "WHERE r.duration != '{0}'".format(Config.DURATION_ALWAYS)
             elif what == constants.RULES_TYPE_PERMANENT:
                 what = "WHERE r.duration = '{0}'".format(Config.DURATION_ALWAYS)
+        elif section == constants.FILTER_TREE_NETWORKS:
+            # Filter by network-related operands: dest.ip, dest.host, dest.network
+            network_ops = (
+                "'{0}'".format(Config.OPERAND_DEST_IP),
+                "'{0}'".format(Config.OPERAND_DEST_HOST),
+                "'{0}'".format(Config.OPERAND_DEST_NETWORK)
+            )
+            network_filter = "r.operator_operand IN ({0})".format(", ".join(network_ops))
+            if what == constants.RULES_TYPE_TEMPORARY:
+                what = "WHERE {0} AND r.duration != '{1}'".format(network_filter, Config.DURATION_ALWAYS)
+            elif what == constants.RULES_TYPE_PERMANENT:
+                what = "WHERE {0} AND r.duration = '{1}'".format(network_filter, Config.DURATION_ALWAYS)
+            else:
+                what = "WHERE {0}".format(network_filter)
         elif section == constants.FILTER_TREE_NODES and what != "":
             what = f"WHERE r.node = '{what}'"
 

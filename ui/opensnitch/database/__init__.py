@@ -691,6 +691,54 @@ class Database:
 
         return q
 
+    def get_unique_rule_targets(self, node_addr=None, operand_prefix=None):
+        """
+        Get unique operator_data values grouped by operand and duration.
+        Returns dict: {operand: {duration: [data1, data2, ...]}}
+        Used to show grouped applications/network targets in the UI.
+        """
+        results = {}
+        qstr = "SELECT operator_operand, operator_data, duration, action FROM rules"
+        conditions = []
+        if node_addr is not None:
+            conditions.append("node=?")
+        if operand_prefix is not None:
+            conditions.append("operator_operand LIKE ?")
+
+        if conditions:
+            qstr += " WHERE " + " AND ".join(conditions)
+
+        q = QSqlQuery(qstr, self.db)
+        if node_addr is not None and operand_prefix is not None:
+            q.prepare(qstr)
+            q.addBindValue(node_addr)
+            q.addBindValue(operand_prefix + "%")
+        elif node_addr is not None:
+            q.prepare(qstr)
+            q.addBindValue(node_addr)
+        elif operand_prefix is not None:
+            q.prepare(qstr)
+            q.addBindValue(operand_prefix + "%")
+        else:
+            q.prepare(qstr)
+
+        if not q.exec():
+            self.logger.error("get_unique_rule_targets() error: %s", q.lastError().driverText())
+            return results
+
+        while q.next():
+            op = q.value(0)
+            data = q.value(1)
+            duration = q.value(2)
+            action = q.value(3)
+            if op not in results:
+                results[op] = {}
+            if duration not in results[op]:
+                results[op][duration] = []
+            results[op][duration].append({"data": data, "action": action})
+
+        return results
+
     def insert_rule(self, rule, node_addr):
         self.insert("rules",
             "(time, node, name, description, enabled, precedence, nolog, action, duration, operator_type, operator_sensitive, operator_operand, operator_data)",

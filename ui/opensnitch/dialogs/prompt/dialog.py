@@ -562,16 +562,44 @@ class PromptDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
         utils.add_ip_regexp_to_combo(self.whatCombo, self.whatIPCombo, con)
         utils.add_dst_networks_to_combo(self.whatIPCombo, con.dst_ip)
 
-        self._default_action = self._cfg.getInt(self._cfg.DEFAULT_ACTION_KEY)
-        utils.set_default_duration(self._cfg, self.durationCombo)
+        # Load last used settings if available, otherwise use defaults
+        if self._cfg.hasKey(self._cfg.LAST_USED_ACTION):
+            self._default_action = self._cfg.getInt(self._cfg.LAST_USED_ACTION)
+        else:
+            self._default_action = self._cfg.getInt(self._cfg.DEFAULT_ACTION_KEY)
+
+        if self._cfg.hasKey(self._cfg.LAST_USED_DURATION):
+            self.durationCombo.setCurrentIndex(self._cfg.getInt(self._cfg.LAST_USED_DURATION))
+        else:
+            utils.set_default_duration(self._cfg, self.durationCombo)
 
         utils.set_default_target(self.whatCombo, con, self._cfg, app_name, app_args)
 
-        self.checkDstIP.setChecked(self._cfg.getBool(self._cfg.DEFAULT_POPUP_ADVANCED_DSTIP))
-        self.checkDstPort.setChecked(self._cfg.getBool(self._cfg.DEFAULT_POPUP_ADVANCED_DSTPORT))
-        self.checkUserID.setChecked(self._cfg.getBool(self._cfg.DEFAULT_POPUP_ADVANCED_UID))
-        self.checkSum.setChecked(self._cfg.getBool(self._cfg.DEFAULT_POPUP_ADVANCED_CHECKSUM))
-        if self._cfg.getBool(self._cfg.DEFAULT_POPUP_ADVANCED):
+        # Load last used advanced settings if available
+        if self._cfg.hasKey(self._cfg.LAST_USED_DSTIP):
+            self.checkDstIP.setChecked(self._cfg.getBool(self._cfg.LAST_USED_DSTIP))
+        else:
+            self.checkDstIP.setChecked(self._cfg.getBool(self._cfg.DEFAULT_POPUP_ADVANCED_DSTIP))
+
+        if self._cfg.hasKey(self._cfg.LAST_USED_DSTPORT):
+            self.checkDstPort.setChecked(self._cfg.getBool(self._cfg.LAST_USED_DSTPORT))
+        else:
+            self.checkDstPort.setChecked(self._cfg.getBool(self._cfg.DEFAULT_POPUP_ADVANCED_DSTPORT))
+
+        if self._cfg.hasKey(self._cfg.LAST_USED_UID):
+            self.checkUserID.setChecked(self._cfg.getBool(self._cfg.LAST_USED_UID))
+        else:
+            self.checkUserID.setChecked(self._cfg.getBool(self._cfg.DEFAULT_POPUP_ADVANCED_UID))
+
+        if self._cfg.hasKey(self._cfg.LAST_USED_CHECKSUM):
+            self.checkSum.setChecked(self._cfg.getBool(self._cfg.LAST_USED_CHECKSUM))
+        else:
+            self.checkSum.setChecked(self._cfg.getBool(self._cfg.DEFAULT_POPUP_ADVANCED_CHECKSUM))
+
+        if self._cfg.hasKey(self._cfg.LAST_USED_ADVANCED):
+            if self._cfg.getBool(self._cfg.LAST_USED_ADVANCED):
+                self.checkAdvanced.toggle()
+        elif self._cfg.getBool(self._cfg.DEFAULT_POPUP_ADVANCED):
             self.checkAdvanced.toggle()
 
         self._set_cmd_action_text()
@@ -711,6 +739,16 @@ class PromptDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
             exists = self._rules.exists(self._rule, self._peer)
             if not exists:
                 self._rule.name = self._rules.new_unique_name(rule_temp_name, self._peer, "")
+
+            # Save last used settings
+            self._cfg.setSettings(self._cfg.LAST_USED_ACTION, self._default_action)
+            self._cfg.setSettings(self._cfg.LAST_USED_DURATION, self.durationCombo.currentIndex())
+            self._cfg.setSettings(self._cfg.LAST_USED_TARGET, self.whatCombo.currentIndex())
+            self._cfg.setSettings(self._cfg.LAST_USED_ADVANCED, self._ischeckAdvanceded)
+            self._cfg.setSettings(self._cfg.LAST_USED_DSTIP, self.checkDstIP.isChecked())
+            self._cfg.setSettings(self._cfg.LAST_USED_DSTPORT, self.checkDstPort.isChecked())
+            self._cfg.setSettings(self._cfg.LAST_USED_UID, self.checkUserID.isChecked())
+            self._cfg.setSettings(self._cfg.LAST_USED_CHECKSUM, self.checkSum.isChecked())
 
             self.hide()
             if self._ischeckAdvanceded:
