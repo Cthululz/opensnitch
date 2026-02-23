@@ -111,6 +111,9 @@ class StatsDialog(menus.MenusManager, menu_actions.MenuActions, views.ViewsManag
         self.rulesTreePanel.resizeColumnToContents(1)
         self.rulesTreePanel.itemExpanded.connect(self._cb_rules_tree_item_expanded)
 
+        # Add "Network targets" tree item (dest.ip, dest.host, dest.network)
+        self._add_network_targets_tree_item()
+
         self.startButton.clicked.connect(self._cb_start_clicked)
         self.nodeStartButton.clicked.connect(self._cb_node_start_clicked)
         self.nodeStartButton.setVisible(False)
@@ -1196,6 +1199,38 @@ class StatsDialog(menus.MenusManager, menu_actions.MenuActions, views.ViewsManag
 
         self._add_rulesTree_nodes()
         self._add_rulesTree_fw_chains()
+
+    def _add_network_targets_tree_item(self):
+        """Add Network targets tree item with Permanent and Temporary children"""
+        from PyQt6.QtCore import Qt
+        # Create new top-level item for Network Targets
+        network_item = QtWidgets.QTreeWidgetItem(self.rulesTreePanel)
+        network_item.setText(0, QC.translate("stats", "Network targets"))
+        font = network_item.font(0)
+        font.setPointSize(10)
+        font.setBold(True)
+        network_item.setFont(0, font)
+        # Set icon
+        icon = Icons.new(self, "network-server")
+        network_item.setIcon(0, icon)
+
+        # Add Permanent child
+        permanent_item = QtWidgets.QTreeWidgetItem(network_item)
+        permanent_item.setText(0, QC.translate("stats", "Permanent"))
+        permanent_font = permanent_item.font(0)
+        permanent_font.setPointSize(10)
+        permanent_item.setFont(0, permanent_font)
+        perm_icon = Icons.new(self, "security-medium")
+        permanent_item.setIcon(0, perm_icon)
+
+        # Add Temporary child
+        temporary_item = QtWidgets.QTreeWidgetItem(network_item)
+        temporary_item.setText(0, QC.translate("stats", "Temporary"))
+        temp_font = temporary_item.font(0)
+        temp_font.setPointSize(10)
+        temporary_item.setFont(0, temp_font)
+        temp_icon = Icons.new(self, "edit-clear")
+        temporary_item.setIcon(0, temp_icon)
 
     def _add_rulesTree_nodes(self):
         if self.nodes_count() == 0:

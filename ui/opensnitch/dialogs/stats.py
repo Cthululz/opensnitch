@@ -539,6 +539,10 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
         self.nodesSplitter.splitterMoved.connect(lambda pos, index: self._cb_splitter_moved(self.TAB_NODES, pos, index))
         self.rulesTreePanel.itemClicked.connect(self._cb_rules_tree_item_clicked)
         self.rulesTreePanel.itemDoubleClicked.connect(self._cb_rules_tree_item_double_clicked)
+
+        # Add "Network targets" tree item (dest.ip, dest.host, dest.network)
+        self._add_network_targets_tree_item()
+
         self.enableRuleCheck.clicked.connect(self._cb_enable_rule_toggled)
         self.editRuleButton.clicked.connect(self._cb_edit_rule_clicked)
         self.newRuleButton.clicked.connect(self._cb_new_rule_clicked)
@@ -2676,6 +2680,37 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
             nodesItem.takeChildren()
             for n in self._nodes.get_nodes():
                 nodesItem.addChild(QtWidgets.QTreeWidgetItem([n]))
+
+    def _add_network_targets_tree_item(self):
+        """Add Network targets tree item with Permanent and Temporary children"""
+        # Create new top-level item for Network Targets
+        network_item = QtWidgets.QTreeWidgetItem(self.rulesTreePanel)
+        network_item.setText(0, QC.translate("stats", "Network targets"))
+        font = network_item.font(0)
+        font.setPointSize(10)
+        font.setBold(True)
+        network_item.setFont(0, font)
+        # Set icon
+        icon = Icons.new(self, "network-server")
+        network_item.setIcon(0, icon)
+
+        # Add Permanent child
+        permanent_item = QtWidgets.QTreeWidgetItem(network_item)
+        permanent_item.setText(0, QC.translate("stats", "Permanent"))
+        permanent_font = permanent_item.font(0)
+        permanent_font.setPointSize(10)
+        permanent_item.setFont(0, permanent_font)
+        perm_icon = Icons.new(self, "security-medium")
+        permanent_item.setIcon(0, perm_icon)
+
+        # Add Temporary child
+        temporary_item = QtWidgets.QTreeWidgetItem(network_item)
+        temporary_item.setText(0, QC.translate("stats", "Temporary"))
+        temp_font = temporary_item.font(0)
+        temp_font.setPointSize(10)
+        temporary_item.setFont(0, temp_font)
+        temp_icon = Icons.new(self, "edit-clear")
+        temporary_item.setIcon(0, temp_icon)
 
     def _find_tree_fw_items(self, item_data):
         """find fw items by data stored in UserRole role.
