@@ -27,9 +27,6 @@ class FirewallDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
     POLICY_ACCEPT = 0
     POLICY_DROP = 1
 
-    ALL_NODES = "all"
-    ALL_NODES_IDX = 0
-
     _notification_callback = QtCore.pyqtSignal(str, ui_pb2.NotificationReply)
 
     def __init__(self, parent=None, appicon=None, node=None):
@@ -67,7 +64,6 @@ class FirewallDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
         self.cmdAllowINService.clicked.connect(self._cb_allow_in_service_clicked)
         self.comboInput.currentIndexChanged.connect(lambda: self._cb_combo_policy_changed(self.COMBO_IN))
         self.comboProfile.currentIndexChanged.connect(self._cb_combo_profile_changed)
-        self.comboNodes.currentIndexChanged.connect(self._cb_combo_nodes_changed)
         self.sliderFwEnable.valueChanged.connect(self._cb_enable_fw_changed)
         self.cmdClose.clicked.connect(self._cb_close_clicked)
         self.cmdHelp.clicked.connect(
@@ -107,17 +103,7 @@ class FirewallDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
 
     @QtCore.pyqtSlot(int)
     def _cb_nodes_updated(self, total):
-        if self._nodes.count() <= 1:
-            self._load_nodes()
-            self.load_fw_policies()
-
-    def _cb_combo_nodes_changed(self, idx):
-        nIdx = self.comboNodes.currentIndex()
-        addr = self.comboNodes.itemData(nIdx)
-        if nIdx >= 1:
-            self.block_combo_signals()
-            self.load_node_fw_policy(addr)
-            self.block_combo_signals(False)
+        self._check_fw_status()
 
     def _cb_combo_profile_changed(self, idx):
         combo_profile = self._fw_profiles[idx]
@@ -136,14 +122,6 @@ class FirewallDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
                 self._set_status_error(QC.translate("firewall", "error adding profile extra rules:", err))
 
     def _cb_combo_policy_changed(self, combo):
-        if self.comboNodes.currentIndex() == FirewallDialog.ALL_NODES_IDX:
-            ret = Message.yes_no(
-                QC.translate("stats", "This change will apply the policy change to all nodes?"),
-                QC.translate("stats", "Are you sure?"),
-                QtWidgets.QMessageBox.Icon.Warning)
-            if ret == QtWidgets.QMessageBox.StandardButton.Cancel:
-                return
-
         self._reset_status_message()
         self.comboInput.setEnabled(False)
         self.comboOutput.setEnabled(False)
@@ -206,12 +184,13 @@ class FirewallDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
             self.sliderFwEnable.setValue(False)
             self.sliderFwEnable.blockSignals(False)
             return
-        nIdx = self.comboNodes.currentIndex()
-        addr = self.comboNodes.itemData(nIdx)
-        self.enable_fw(addr, enable)
+        self.enable_fw(enable)
 
     def _cb_close_clicked(self):
         self._close()
+
+    def _load_nodes(self):
+        self._nodes = self._nodes.get()
 
     def _close(self):
         self.hide()
@@ -223,69 +202,62 @@ class FirewallDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
     def showEvent(self, event):
         super(FirewallDialog, self).showEvent(event)
         self._reset_fields()
-        self._load_nodes()
-        self.load_fw_policies()
+        self._check_fw_status()
         self._fw_profiles = FwProfiles.Profiles.load_predefined_profiles()
         self.comboProfile.blockSignals(True)
         for pr in self._fw_profiles:
             self.comboProfile.addItem([pr[k] for k in pr][0]['Name'])
         self.comboProfile.blockSignals(False)
 
-    def _load_nodes(self):
-        self.comboNodes.blockSignals(True)
-        self.comboNodes.clear()
-        node_list = self._nodes.get()
-
-        self.comboNodes.addItem(QC.translate("firewall", "All"), self.ALL_NODES)
-        for node in node_list:
-            hostname = self._nodes.get_node_hostname(node)
-            self.comboNodes.addItem(hostname + " - " + node, node)
-
-        show_nodes = len(node_list) > 1
-        if show_nodes is False:
-            self.comboNodes.setCurrentIndex(1)
-        self.comboNodes.setVisible(show_nodes)
-
-        self.comboNodes.blockSignals(False)
-
     def send_notification(self, node_addr, fw_config):
         self._set_status_message(QC.translate("firewall", "Applying changes..."))
+        nid, notif = self._nodes.reload_fw(node_addr, fw_config, self._notification_callback)
+        self._notifications_sent[nid] = {'addr': node_addr, 'notif': notif}
 
-        nIdx = self.comboNodes.currentIndex()
-        addr = self.comboNodes.itemData(nIdx)
-        if addr == self.ALL_NODES and self._nodes.count() > 1:
-            for addr in self._nodes.get():
-                nid, notif = self._nodes.reload_fw(addr, fw_config, self._notification_callback)
-                self._notifications_sent[nid] = {'addr': addr, 'notif': notif}
-
-            return
-
-        nid, notif = self._nodes.reload_fw(addr, fw_config, self._notification_callback)
-        self._notifications_sent[nid] = {'addr': addr, 'notif': notif}
-
-    def load_fw_policies(self, node_addr=None):
+    def _check_fw_status(self):
         self.lblFwStatus.setText("")
         self.sliderFwEnable.blockSignals(True)
-        self.block_combo_signals()
+        self.comboInput.blockSignals(True)
+        self.comboOutput.blockSignals(True)
+        self.comboProfile.blockSignals(True)
 
         self._disable_widgets()
 
-        enableFw = False
         try:
+            enableFw = False
             enableFwBtn = (self._nodes.count() > 0)
             self.sliderFwEnable.setEnabled(enableFwBtn)
             if not enableFwBtn:
                 return
 
-            enableFw = self._nodes.count() > 1
-            if node_addr is None:
+            # TODO: handle nodes' firewall properly
+            for addr in self._nodes.get():
+                node = self._nodes.get_node(addr)
+                self._fwConfig = node['firewall']
+                enableFw |= self._fwConfig.Enabled
 
-                if self._nodes.count() == 1:
-                    nIdx = self.comboNodes.currentIndex()
-                    node_addr = self.comboNodes.itemData(nIdx)
-                    if node_addr is not None:
-                        enableFw = self.load_node_fw_policy(node_addr)
+                if self.fw_is_incompatible(addr, node):
+                    enableFw = False
                     return
+
+                # XXX: Here we loop twice over the chains. We could have 1 loop.
+                pol_in = self._fw.chains.get_policy(addr, Fw.Hooks.INPUT.value)
+                pol_out = self._fw.chains.get_policy(addr, Fw.Hooks.OUTPUT.value, Fw.ChainType.MANGLE.value)
+
+                if pol_in != None:
+                    self.comboInput.setCurrentIndex(
+                        Fw.Policy.values().index(pol_in)
+                    )
+                else:
+                    self._set_status_error(QC.translate("firewall", "Error getting INPUT chain policy"))
+                    self._disable_widgets()
+                if pol_out != None:
+                    self.comboOutput.setCurrentIndex(
+                        Fw.Policy.values().index(pol_out)
+                    )
+                else:
+                    self._set_status_error(QC.translate("firewall", "Error getting OUTPUT chain policy"))
+                    self._disable_widgets()
 
         except Exception as e:
             self._set_status_error("Firewall status error (report on github please): {0}".format(e))
@@ -300,44 +272,9 @@ class FirewallDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
             self.sliderFwEnable.setValue(enableFw)
 
             self.sliderFwEnable.blockSignals(False)
-            self.block_combo_signals(False)
-
-    def load_node_fw_policy(self, addr):
-        enableFw = False
-        try:
-            node = self._nodes.get_node(addr)
-            self._fwConfig = node['firewall']
-            enableFw |= self._fwConfig.Enabled
-
-            if self.fw_is_incompatible(addr, node):
-                enableFw = False
-                return
-
-            # XXX: Here we loop twice over the chains. We could have 1 loop.
-            pol_in = self._fw.chains.get_policy(addr, Fw.Hooks.INPUT.value)
-            pol_out = self._fw.chains.get_policy(addr, Fw.Hooks.OUTPUT.value, Fw.ChainType.MANGLE.value)
-
-            if pol_in != None:
-                self.comboInput.setCurrentIndex(
-                    Fw.Policy.values().index(pol_in)
-                )
-            else:
-                self._set_status_error(QC.translate("firewall", "Error getting INPUT chain policy"))
-                self._disable_widgets()
-            if pol_out != None:
-                self.comboOutput.setCurrentIndex(
-                    Fw.Policy.values().index(pol_out)
-                )
-            else:
-                self._set_status_error(QC.translate("firewall", "Error getting OUTPUT chain policy"))
-                self._disable_widgets()
-
-        except Exception as e:
-            self._set_status_error("Firewall status error (report on github please): {0}".format(e))
-            enableFw = False
-
-        return enableFw
-
+            self.comboInput.blockSignals(False)
+            self.comboOutput.blockSignals(False)
+            self.comboProfile.blockSignals(False)
 
     def fw_is_incompatible(self, addr, node):
         """Check if the fw is compatible with this GUI.
@@ -353,7 +290,7 @@ class FirewallDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
             if self.isHidden() == False and self.change_fw(addr, node_cfg):
                     node_cfg['Firewall'] = "nftables"
                     self.sliderFwEnable.setEnabled(True)
-                    self.enable_fw(addr, True)
+                    self.enable_fw(True)
                     self._change_fw_backend(addr, node_cfg)
                     return False
             incompatible = True
@@ -384,7 +321,7 @@ class FirewallDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
 
         return False
 
-    def enable_fw(self, addr, enable):
+    def enable_fw(self, enable):
         try:
             self._disable_widgets(not enable)
             if enable:
@@ -420,21 +357,22 @@ class FirewallDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
                         )
                         return
 
-            # FIXME:
-            # Due to how the daemon reacts to events when the fw configuration
-            # is modified, changing the policy + disabling the fw doesn't work
-            # as expected.
-            # The daemon detects that the fw is disabled, and it never changes
-            # the policy.
-            # As a workaround to this problem, we send 2 fw changes:
-            # - one for changing the policy
-            # - another one for disabling the fw
+            for addr in self._nodes.get():
+                # FIXME:
+                # Due to how the daemon reacts to events when the fw configuration
+                # is modified, changing the policy + disabling the fw doesn't work
+                # as expected.
+                # The daemon detects that the fw is disabled, and it never changes
+                # the policy.
+                # As a workaround to this problem, we send 2 fw changes:
+                # - one for changing the policy
+                # - another one for disabling the fw
 
-            fwcfg = self._nodes.get_node(addr)['firewall']
-            self.send_notification(addr, fwcfg)
-            time.sleep(0.5)
-            fwcfg.Enabled = True if enable else False
-            self.send_notification(addr, fwcfg)
+                fwcfg = self._nodes.get_node(addr)['firewall']
+                self.send_notification(addr, fwcfg)
+                time.sleep(0.5)
+                fwcfg.Enabled = True if enable else False
+                self.send_notification(addr, fwcfg)
 
             self.lblStatusIcon.setEnabled(enable)
             self.policiesBox.setEnabled(enable)
@@ -442,9 +380,7 @@ class FirewallDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
             time.sleep(0.5)
 
         except Exception as e:
-            self._set_status_error(
-                QC.translate("firewall", "Error: {0}".format(e))
-            )
+            QC.translate("firewall", "Error: {0}".format(e))
 
     def load_rule(self, addr, uuid):
         self._fwrule_dialog.load(addr, uuid)
@@ -480,16 +416,9 @@ class FirewallDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
     def _reset_fields(self):
         self._reset_status_message()
 
-    def block_combo_signals(self, state=True):
-        self.comboInput.blockSignals(state)
-        self.comboOutput.blockSignals(state)
-        self.comboNodes.blockSignals(state)
-        self.comboProfile.blockSignals(state)
-
     def _disable_widgets(self, disable=True):
         self.comboInput.setEnabled(not disable)
         self.comboOutput.setEnabled(not disable)
         self.cmdNewRule.setEnabled(not disable)
         self.cmdAllowOUTService.setEnabled(not disable)
         self.cmdAllowINService.setEnabled(not disable)
-        self.comboNodes.setEnabled(not disable)

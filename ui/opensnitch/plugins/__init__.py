@@ -6,7 +6,6 @@ import gc
 import weakref
 
 from opensnitch.config import Config
-from opensnitch.utils import logger
 
 class PluginSignal(QtCore.QObject):
     signal = QtCore.pyqtSignal(dict)
@@ -150,7 +149,6 @@ class PluginsManager():
         self._plugins_loaded = weakref.WeakValueDictionary()
         self._plugins_path = os.path.dirname(path)
 
-        self.logger = logger.get(__name__)
         self._cfg = Config.get()
         self.enabled_plugins = self._cfg.getSettings(Config.PLUGINS)
         # FIXME: don't hardcode this plugin here.
@@ -163,18 +161,18 @@ class PluginsManager():
             self.enabled_plugins = [self.enabled_plugins]
         if 'highlight' not in self.enabled_plugins:
             self.enabled_plugins.append('highlight')
-        self.logger.info("Plugins.enabled plugins >> %s", repr(self.enabled_plugins))
+        #print("enabled plugins >>", self.enabled_plugins)
 
     def load_plugins(self):
-        self.logger.info("PluginsManager.load_plugins() %s", self._plugins_path)
+        #print("PluginsManager.load_plugins()", self._plugins_path)
         for dname in os.listdir(self._plugins_path):
             self.load_plugin_byname(dname)
 
-        self.logger.info("PluginsManager.load_plugins() actions: %s", repr(PluginsList.actions))
+        #print("PluginsManager:", PluginsList.actions)
         for plug in PluginsList.actions:
             p = plug()
             p.signal_in.emit({"plugin": p.get_name(), "signal": PluginSignal.ENABLE})
-            self.logger.info("plugin loaded -> %s", p.get_name())
+            #print("plugin ->", p.get_name())
 
     def load_plugin_byname(self, name, force=False):
         path = os.path.join(self._plugins_path, name)
@@ -182,7 +180,7 @@ class PluginsManager():
             return False
         # the loading of the plugin is based on the file name
         pname = os.path.join(path, name + ".py")
-        self.logger.info("load_plugin_byname.plugin path: %s", pname)
+        #print("load_plugin_byname.plugin path:", pname)
         if os.path.exists(pname) == False:
             return False
 
@@ -191,13 +189,13 @@ class PluginsManager():
     def load_plugin(self, path, force=False):
         """loads the .py file, the name of the file is used to load the plugin
         """
-        self.logger.info("loading plugin %s", path)
+        #print("loading plugin:", path)
         name = os.path.split(path)[-1]
         if self.enabled_plugins == None and not force:
-            self.logger.info("skipping not enabled plugin: %s", name)
+            #print("skipping not enabled plugin:", name)
             return False
         if name[:-3] not in self.enabled_plugins and force == False:
-            self.logger.info("PluginsManager: plugin disabled: %s", name[:-3])
+            #print("PluginsManager: plugin disabled:", name[:-3])
             return False
 
         # Whenever a plugin is loaded, it's automatically added to the
@@ -208,11 +206,10 @@ class PluginsManager():
 
         self._plugins_loaded[module] = spec
 
-        self.logger.info("PluginsManager, plugin loaded: %s", name)
         return True
 
     def unload_all(self):
         for mod in self._plugins_loaded:
-            self.logger.debug("PluginsManager.unload_all() %s", mod)
+            #print("PluginsManager.unload_all()", mod)
             del mod
         gc.collect()

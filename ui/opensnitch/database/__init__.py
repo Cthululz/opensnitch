@@ -4,8 +4,6 @@ import sys
 import os
 from datetime import datetime, timedelta
 
-from opensnitch.utils import logger
-
 class Database:
     db = None
     __instance = None
@@ -34,7 +32,6 @@ class Database:
         return Database.__instance
 
     def __init__(self, dbname="db"):
-        self.logger = logger.get(__name__)
         self._lock = threading.RLock()
         self.db = None
         self.db_file = Database.DB_IN_MEMORY
@@ -56,21 +53,18 @@ class Database:
         if dbtype == Database.DB_TYPE_MEMORY:
             self.db.setConnectOptions("QSQLITE_OPEN_URI;QSQLITE_ENABLE_SHARED_CACHE")
         if not self.db.open():
-            print("\n ** Error opening DB: {0}".format(self.db_file))
-            print("\n    file exists:", os.path.exists(self.db_file))
-            print("\n    db error:", self.db.lastError().databaseText())
-            print("\n    driver error:", self.db.lastError().driverText())
+            print("\n ** Error opening DB: SQLite driver not loaded. DB name: %s\n" % self.db_file)
             print("\n    Available drivers: ", QSqlDatabase.drivers())
             sys.exit(-1)
 
         db_status, db_error = self.is_db_ok()
         if db_status is False:
-            self.logger.warning("db.initialize() error: %s", db_error)
+            print("db.initialize() error:", db_error)
             return False, db_error
 
 
         if is_new_file:
-            self.logger.info("is new file, or IN MEMORY, setting initial schema version")
+            print("is new file, or IN MEMORY, setting initial schema version")
             self.set_schema_version(self.DB_VERSION)
 
         self._create_tables()
@@ -83,14 +77,14 @@ class Database:
                 self.db.removeDatabase(self.db_name)
                 self.db.close()
         except Exception as e:
-            self.logger.warning("db.close() exception: %s", repr(e))
+            print("db.close() exception:", e)
 
     def is_db_ok(self):
         # XXX: quick_check may not be fast enough with some DBs on slow
         # hardware.
         q = QSqlQuery("PRAGMA quick_check;", self.db)
         if q.exec() is not True:
-            self.logger.warning("%s", q.lastError().driverText())
+            print(q.lastError().driverText())
             return False, q.lastError().driverText()
 
         if q.next() and q.value(0) != "ok":
@@ -265,16 +259,16 @@ class Database:
         q = QSqlQuery("PRAGMA user_version;", self.db)
         q.exec()
         if q.next():
-            self.logger.info("schema version: %s", q.value(0))
+            print("schema version:", q.value(0))
             return int(q.value(0))
 
         return 0
 
     def set_schema_version(self, version):
-        self.logger.info("setting schema version to: %s", version)
+        print("setting schema version to:", version)
         q = QSqlQuery("PRAGMA user_version = {0}".format(version), self.db)
         if q.exec() == False:
-            self.logger.error("Error updating updating schema version: %s", q.lastError().text())
+            print("Error updating updating schema version:", q.lastError().text())
 
     def get_journal_mode(self):
         q = QSqlQuery("PRAGMA journal_mode;", self.db)
@@ -288,26 +282,26 @@ class Database:
         # https://www.sqlite.org/wal.html
         mode_str = Database.DB_JOURNAL_MODE_LIST[mode]
         if self.get_journal_mode().lower() != mode_str.lower():
-            self.logger.info("Setting journal_mode: %s", mode_str)
+            print("Setting journal_mode: ", mode_str)
             q = QSqlQuery("PRAGMA journal_mode = {modestr};".format(modestr = mode_str), self.db)
             if q.exec() == False:
-                self.logger.error("Error updating PRAGMA journal_mode: %s", q.lastError().text())
+                print("Error updating PRAGMA journal_mode:", q.lastError().text())
                 return False
         if mode == 3 or mode == 5:
-            self.logger.debug("Setting DB memory optimizations")
+            print("Setting DB memory optimizations")
             q = QSqlQuery("PRAGMA synchronous = OFF;", self.db)
             if q.exec() == False:
-                self.logger.error("Error updating PRAGMA synchronous: %s", q.lastError().text())
+                print("Error updating PRAGMA synchronous:", q.lastError().text())
                 return False
             q = QSqlQuery("PRAGMA cache_size=10000;", self.db)
             if q.exec() == False:
-                self.logger.error("Error updating PRAGMA cache_size: %s", q.lastError().text())
+                print("Error updating PRAGMA cache_size:", q.lastError().text())
                 return False
         else:
-            self.logger.info("Setting synchronous = NORMAL")
+            print("Setting synchronous = NORMAL")
             q = QSqlQuery("PRAGMA synchronous = NORMAL;", self.db)
             if q.exec() == False:
-                self.logger.error("Error updating PRAGMA synchronous: %s", q.lastError().text())
+                print("Error updating PRAGMA synchronous:", q.lastError().text())
 
         return True
 
@@ -315,31 +309,31 @@ class Database:
         migrations_path = os.path.dirname(os.path.realpath(__file__)) + "/migrations"
         schema_version = self.get_schema_version()
         if schema_version == self.DB_VERSION:
-            self.logger.info("db schema is up to date")
+            print("db schema is up to date")
             return
         while schema_version < self.DB_VERSION:
             schema_version += 1
             try:
-                self.logger.info("applying schema upgrade: %s", schema_version)
+                print("applying schema upgrade:", schema_version)
                 self._apply_db_upgrade("{0}/upgrade_{1}.sql".format(migrations_path, schema_version))
             except Exception as e:
-                self.logger.warning("Not applying upgrade_%s.sql: %s", schema_version, repr(e))
+                print("Not applying upgrade_{0}.sql:".format(schema_version), e)
                 return
         self.set_schema_version(schema_version)
 
     def _apply_db_upgrade(self, file):
-        self.logger.info("applying upgrade from: %s", file)
+        print("applying upgrade from:", file)
         q = QSqlQuery(self.db)
         with open(file) as f:
             for line in f.readlines():
                 # skip comments
                 if line.startswith("--"):
                     continue
-                self.logger.info("applying upgrade: %s", line)
+                print("applying upgrade:", line, end="")
                 if q.exec(line) == False:
-                    self.logger.error("db upgrade error: %s", q.lastError().text())
+                    print("\tError:", q.lastError().text())
                 else:
-                    self.logger.info("db upgrade OK")
+                    print("\tOK")
 
     def optimize(self):
         """https://www.sqlite.org/pragma.html#pragma_optimize
@@ -378,7 +372,7 @@ class Database:
             if q.exec() and q.first():
                 r = q.value(0)
         except Exception as e:
-            self.logger.warning("db, get_total_records() error: %s", repr(e))
+            print("db, get_total_records() error:", e)
 
     def get_newest_record(self):
         try:
@@ -386,7 +380,7 @@ class Database:
             if q.exec() and q.first():
                 return q.value(0)
         except Exception as e:
-            self.logger.warning("db, get_newest_record() error: %s", repr(e))
+            print("db, get_newest_record() error:", e)
         return 0
 
     def get_oldest_record(self):
@@ -395,7 +389,7 @@ class Database:
             if q.exec() and q.first():
                 return q.value(0)
         except Exception as e:
-            self.logger.warning("db, get_oldest_record() error: %s", repr(e))
+            print("db, get_oldest_record() error:", e)
         return 0
 
     def purge_oldest(self, max_days_to_keep):
@@ -415,10 +409,10 @@ class Database:
                 q.prepare("DELETE FROM connections WHERE time < ?")
                 q.bindValue(0, str(date_to_purge))
                 if q.exec():
-                    self.logger.debug("purge_oldest() %d records deleted", q.numRowsAffected())
+                    print("purge_oldest() {0} records deleted".format(q.numRowsAffected()))
                     return q.numRowsAffected()
         except Exception as e:
-            self.logger.warning("db, purge_oldest() error: %s", repr(e))
+            print("db, purge_oldest() error:", e)
 
         return -1
 
@@ -426,7 +420,7 @@ class Database:
         try:
             return QSqlQuery(qstr, self.db)
         except Exception as e:
-            self.logger.warning("db, select() exception: %s", repr(e))
+            print("db, select() exception: ", e)
 
         return None
 
@@ -436,10 +430,10 @@ class Database:
             if q.exec():
                 return True
             else:
-                self.logger.error("db, remove() ERROR: %s", qstr)
-                self.logger.error("%s", q.lastError().driverText())
+                print("db, remove() ERROR: ", qstr)
+                print(q.lastError().driverText())
         except Exception as e:
-            self.logger.warning("db, remove exception: %s", repr(e))
+            print("db, remove exception: ", e)
 
         return False
 
@@ -454,11 +448,11 @@ class Database:
                 if q.exec():
                     return True
                 else:
-                    self.logger.error("_insert() ERROR: %s", query_str)
-                    self.logger.error("%s", q.lastError().driverText())
+                    print("_insert() ERROR", query_str)
+                    print(q.lastError().driverText())
 
             except Exception as e:
-                self.logger.warning("_insert exception: %s", repr(e))
+                print("_insert exception", e)
             finally:
                 q.finish()
 
@@ -499,11 +493,11 @@ class Database:
                 for idx, v in enumerate(values):
                     q.bindValue(idx, v)
                 if not q.exec():
-                    self.logger.error("update ERROR: %s - values: %s", qstr, values)
-                    self.logger.error("%s", q.lastError().driverText())
+                    print("update ERROR:", qstr, "values:", values)
+                    print(q.lastError().driverText())
 
         except Exception as e:
-            self.logger.warning("update() exception: %s", repr(e))
+            print("update() exception:", e)
         finally:
             q.finish()
 
@@ -516,14 +510,14 @@ class Database:
                 q.addBindValue(fields)
                 q.addBindValue(values)
                 if not q.execBatch():
-                    self.logger.error("_insert_batch() db error: %s", query_str)
-                    self.logger.error("%s", q.lastError().driverText())
-                    self.logger.error("%s", fields)
-                    self.logger.error("%s", values)
+                    print("_insert_batch() db error:", query_str)
+                    print(q.lastError().driverText())
+                    print("\t", fields)
+                    print("\t", values)
 
                     result=False
             except Exception as e:
-                self.logger.warning("_insert_batch() exception: %s", repr(e))
+                print("_insert_batch() exception:", e)
             finally:
                 q.finish()
 
@@ -550,8 +544,8 @@ class Database:
             with self._lock:
                 q = QSqlQuery(s, self.db)
                 if not q.exec():
-                    self.logger.error("update batch ERROR: %s", s)
-                    self.logger.error("%s", q.lastError().driverText())
+                    print("update batch ERROR", s)
+                    print(q.lastError().driverText())
 
     def dump(self):
         q = QSqlQuery(".dump", db=self.db)
@@ -570,8 +564,8 @@ class Database:
             q.prepare(qstr)
             q.addBindValue(name)
             if not q.exec():
-                self.logger.error("db, empty_rule() ERROR: %s", qstr)
-                self.logger.error("%s", q.lastError().driverText())
+                print("db, empty_rule() ERROR: ", qstr)
+                print(q.lastError().driverText())
 
     def delete_rule(self, name, node_addr):
         qstr = "DELETE FROM rules WHERE name=?"
@@ -585,8 +579,8 @@ class Database:
             if node_addr != None:
                 q.addBindValue(node_addr)
             if not q.exec():
-                self.logger.error("db, delete_rule() ERROR: %s", qstr)
-                self.logger.error("%s", q.lastError().driverText())
+                print("db, delete_rule() ERROR: ", qstr)
+                print(q.lastError().driverText())
                 return False
 
         return True
@@ -609,8 +603,8 @@ class Database:
                 q.addBindValue(v)
 
             if not q.exec():
-                self.logger.error("db, delete_rule_by_field() ERROR: %s", qstr)
-                self.logger.error("%s", q.lastError().driverText())
+                print("db, delete_rule_by_field() ERROR: ", qstr)
+                print(q.lastError().driverText())
                 return False
 
         return True
@@ -673,7 +667,7 @@ class Database:
         if node_addr != None:
             q.addBindValue(node_addr)
         if not q.exec():
-            self.logger.error("get_rule_by_field() error: %s", q.lastError().driverText())
+            print("get_rule_by_field() error:", q.lastError().driverText())
             return None
 
         return q
@@ -690,108 +684,6 @@ class Database:
             return None
 
         return q
-
-    def get_unique_rule_targets(self, node_addr=None, operand_prefix=None):
-        """
-        Get unique operator_data values grouped by operand and duration.
-        Returns dict: {operand: {duration: [data1, data2, ...]}}
-        Used to show grouped applications/network targets in the UI.
-        """
-        results = {}
-        qstr = "SELECT operator_operand, operator_data, duration, action FROM rules"
-        conditions = []
-        if node_addr is not None:
-            conditions.append("node=?")
-        if operand_prefix is not None:
-            conditions.append("operator_operand LIKE ?")
-
-        if conditions:
-            qstr += " WHERE " + " AND ".join(conditions)
-
-        q = QSqlQuery(qstr, self.db)
-        if node_addr is not None and operand_prefix is not None:
-            q.prepare(qstr)
-            q.addBindValue(node_addr)
-            q.addBindValue(operand_prefix + "%")
-        elif node_addr is not None:
-            q.prepare(qstr)
-            q.addBindValue(node_addr)
-        elif operand_prefix is not None:
-            q.prepare(qstr)
-            q.addBindValue(operand_prefix + "%")
-        else:
-            q.prepare(qstr)
-
-        if not q.exec():
-            self.logger.error("get_unique_rule_targets() error: %s", q.lastError().driverText())
-            return results
-
-        while q.next():
-            op = q.value(0)
-            data = q.value(1)
-            duration = q.value(2)
-            action = q.value(3)
-            if op not in results:
-                results[op] = {}
-            if duration not in results[op]:
-                results[op][duration] = []
-            results[op][duration].append({"data": data, "action": action})
-
-        return results
-
-    def get_rule_targets_summary(self, node_addr=None, operand_filter=None, is_permanent=None):
-        """
-        Get summary of unique targets grouped by duration (permanent/temporary).
-        Returns list of dicts: [{"target": "path/or/ip", "permanent_count": N, "temporary_count": M}]
-        """
-        results = []
-        # For applications: process.path
-        # For networks: dest.ip, dest.host, dest.network
-        qstr = """
-            SELECT operator_operand, operator_data, 
-                   SUM(CASE WHEN duration = 'always' THEN 1 ELSE 0 END) as permanent,
-                   SUM(CASE WHEN duration != 'always' THEN 1 ELSE 0 END) as temporary,
-                   COUNT(*) as total
-            FROM rules
-        """
-        conditions = []
-        if node_addr is not None:
-            conditions.append("node=?")
-        if operand_filter is not None:
-            if operand_filter == "process":
-                conditions.append("(operator_operand = 'process.path' OR operator_operand = 'process.command')")
-            elif operand_filter == "network":
-                conditions.append("(operator_operand = 'dest.ip' OR operator_operand = 'dest.host' OR operator_operand = 'dest.network')")
-
-        if conditions:
-            qstr += " WHERE " + " AND ".join(conditions)
-
-        qstr += " GROUP BY operator_data ORDER BY total DESC"
-
-        q = QSqlQuery(qstr, self.db)
-        if node_addr is not None:
-            q.prepare(qstr)
-            q.addBindValue(node_addr)
-        else:
-            q.prepare(qstr)
-
-        if not q.exec():
-            self.logger.error("get_rule_targets_summary() error: %s", q.lastError().driverText())
-            return results
-
-        while q.next():
-            target = q.value(1)
-            perm = q.value(2)
-            temp = q.value(3)
-            total = q.value(4)
-            results.append({
-                "target": target,
-                "permanent_count": perm,
-                "temporary_count": temp,
-                "total": total
-            })
-
-        return results
 
     def insert_rule(self, rule, node_addr):
         self.insert("rules",

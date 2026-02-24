@@ -1,21 +1,16 @@
-import json
-import re
 import logging
 import requests
+import json
+import re
 
 from PyQt6 import QtCore
-
-from opensnitch.actions import Actions
 from opensnitch.version import version
 from opensnitch.config import Config
 from opensnitch.plugins import PluginBase, PluginSignal
-from opensnitch.dialogs.events import StatsDialog, constants as evt_constants
-from opensnitch.dialogs.prompt import PromptDialog, constants
+from opensnitch.dialogs.prompt import PromptDialog
 from opensnitch.dialogs.processdetails import ProcessDetailsDialog
 from opensnitch.plugins.virustotal import _popups
 from opensnitch.plugins.virustotal import _procdialog
-from opensnitch.plugins.virustotal import models
-from opensnitch.customwidgets.colorizeddelegate import ColorizedDelegate
 
 ch = logging.StreamHandler()
 #ch.setLevel(logging.DEBUG)
@@ -27,11 +22,12 @@ logger.setLevel(logging.WARNING)
 
 class VTSignals(QtCore.QObject):
     completed = QtCore.pyqtSignal(object, object, object, object, object)
-    error = QtCore.pyqtSignal(str, object, object, str, object, object)
+    error = QtCore.pyqtSignal(str, object, object, str, object)
 
 class VTAnalysis(QtCore.QRunnable):
     def __init__(self, parent, config, what, url, timeout, api_key, conn):
         super(VTAnalysis, self).__init__()
+        #QtCore.QThread.__init__(self)
         self.signals = VTSignals()
         self.parent = parent
         self.config = config
@@ -60,10 +56,11 @@ class VTAnalysis(QtCore.QRunnable):
             self.signals.completed.emit(what, parent, conf, conn, response)
         except Exception as e:
             logger.warning("vt_analysis.analyze() exception: %s", repr(e))
-            self.signals.error.emit(what, parent, conf, "Exception: {0}".format(e), conn, response)
+            self.signals.error.emit(what, parent, conf, "Exception: {0}".format(e), response)
 
 class Virustotal(PluginBase):
-    """Analyzes properties of a connection: domain, IP, file hash.
+    """
+    Analyzes properties of a connection: domain, IP, file hash.
     json format:
         {
             "config": {
@@ -87,14 +84,13 @@ class Virustotal(PluginBase):
 
 
      Privacy warning: remember that the domains, ips or hashes will be sent to a remote
-     server.
     """
     # Friendly reminder: this is just a PoC, an example of what can be done.
 
     # XXX ideas:
     # - Send a desktop notification if something is detected as malicious.
     # - [DONE] Add a tab page to the popup with the result of the analysis.
-    # - [DONE] Add a link to know more about the domain, certificates, etc.
+    #   * Add a link to know more about the domain, certificates, etc.
     # - Change the icon if malicious.
     # - Hook Procs tab list, get the hash of each binary, upload to VT and
     # update the list with info.
@@ -140,7 +136,7 @@ class Virustotal(PluginBase):
     VERDICT_MALICIOUS_MESSAGE = "\u26A0  Virustotal warning"
 
     # Virustotal returns the analysis of many engines (> 70)
-    # Sometimes only 1 analysis returns malicious results, which may lead to false
+    # Sometimes only 1 analysis returns malicious, which may lead to false
     # positives.
 
     # consider the object (domain, ip, etc) malicious if the number of reports
@@ -151,7 +147,6 @@ class Virustotal(PluginBase):
     # reputation: <integer> domain's score calculated from the votes of the
     # VirusTotal's community.
 
-    VT_DOMAIN = "www.virustotal.com"
     API_DOMAINS = "https://www.virustotal.com/api/v3/domains/"
     API_IPS = "https://www.virustotal.com/api/v3/ip_addresses/"
     #sha256, sha1 or md5
@@ -160,7 +155,6 @@ class Virustotal(PluginBase):
     API_EXCEEDED = False
     API_KEY = 'https://virustotal.readme.io/docs/please-give-me-an-api-key'
     API_CONNECT_TIMEOUT = 1
-    API_QUOTA = 500
 
     # urls to view the details of an object
     RESULTS_DOMAINS = "https://www.virustotal.com/gui/domain/"
@@ -200,7 +194,6 @@ class Virustotal(PluginBase):
         self.lan_regex = re.compile(Virustotal.LAN_RANGES)
         self.signal_in.connect(self.cb_incoming_events)
         self.threadsPool = QtCore.QThreadPool()
-        self.vt_model = None
 
     def configure(self, parent=None):
         """add widgets to all supported areas of the GUI"""
@@ -208,44 +201,10 @@ class Virustotal(PluginBase):
         if type(parent) == PromptDialog:
             vt_tab = _popups.build_vt_tab(self, parent)
             _popups.add_vt_tab(parent, vt_tab)
-            parent.messageLabel.linkActivated.connect(lambda link: _popups._cb_popup_link_clicked(link, parent))
 
         elif type(parent) == ProcessDetailsDialog:
             vt_tab = _procdialog.build_vt_tab(self, parent)
             _procdialog.add_vt_tab(self, parent, vt_tab)
-
-        elif type(parent) == StatsDialog:
-            evt_dialog = parent
-            view_config = evt_dialog.get_view_config(evt_constants.TAB_HOSTS)
-            self.vt_model = models.VTTableModel(
-                view_config['name'],
-                view_config['header_labels'],
-                self.API_DOMAINS,
-                self.API_KEY,
-                self.API_CONNECT_TIMEOUT,
-                self.API_QUOTA,
-                True
-            )
-
-            view_config['view'] = evt_dialog.view_setup(
-                evt_dialog.hostsTable,
-                view_config['name'],
-                model=self.vt_model,
-                verticalScrollBar=evt_dialog.hostsScrollBar,
-                resize_cols=(evt_constants.COL_WHAT,2),
-                order_by=view_config['last_order_by'],
-                limit=evt_dialog.get_view_limit()
-            )
-            _actions = Actions.instance()
-            hostsDelegate = _actions.compile(models.hostsDelegateConfig)
-            view_config['view'].setItemDelegate(
-                ColorizedDelegate(
-                    view_config['view'],
-                    actions=hostsDelegate
-                )
-            )
-            #evt_dialog.set_view_config(evt_constants.TAB_HOSTS, view_config)
-
 
     def compile(self):
         """Transform json items to python objects, if needed.
@@ -255,8 +214,6 @@ class Virustotal(PluginBase):
         for idx in self._config:
             if idx == "config" and 'api_timeout' in self._config[idx]:
                 self.API_CONNECT_TIMEOUT = self._config[idx]['api_timeout']
-            if idx == "config" and 'api_quota' in self._config[idx]:
-                self.API_QUOTA = self._config[idx]['api_quota']
             if idx == "config" and 'api_key' in self._config[idx]:
                 self.API_KEY = self._config[idx]['api_key']
             if idx == "config" and 'api_domains_url' in self._config[idx]:
@@ -266,13 +223,13 @@ class Virustotal(PluginBase):
             if idx == "config" and 'api_files_url' in self._config[idx]:
                 self.API_FILES = self._config[idx]['api_files_url']
 
-        if self._config.get("malicious-label-style") is None:
+        if self._config.get("malicious-label-style") == None:
             self._config['malicious-label-style'] = 'red'
-        if self._config.get("benign-label-style") is None:
+        if self._config.get("benign-label-style") == None:
             self._config['benign-label-style'] = 'green'
-        if self._config.get("malicious-message") is None:
+        if self._config.get("malicious-message") == None:
             self._config['malicious-message'] = self.VERDICT_MALICIOUS_MESSAGE
-        if self._config.get("benign-message") is None:
+        if self._config.get("benign-message") == None:
             self._config['benign-message'] = self.VERDICT_BENIGN_MESSAGE
 
     def run(self, parent, args):
@@ -287,57 +244,57 @@ class Virustotal(PluginBase):
         self.parent = parent
 
         try:
-            if type(parent) != PromptDialog:
-                logger.debug("Virustotal error: parent type not supported: %s", type(parent))
-                return
+            if type(parent) == PromptDialog:
+                parent.messageLabel.linkActivated.connect(lambda link: _popups._cb_popup_link_clicked(link, parent))
+                _popups.reset_widgets_state(parent)
+                #_popups.add_analyzing_msg(self, parent)
+                conn = args[0]
+                if 'www.virustotal.com' == conn.dst_host:
+                    return
+                if self.lan_regex.match(conn.dst_host) != None or self.lan_regex.match(conn.dst_ip) != None:
+                    return
 
-            _popups.reset_widgets_state(parent)
-            #_popups.add_analyzing_msg(self, parent)
-            conn = args[0]
-            if conn.dst_host == Virustotal.VT_DOMAIN:
-                return
-            if self.lan_regex.match(conn.dst_host) is not None or self.lan_regex.match(conn.dst_ip) is not None:
-                return
+                logger.debug("analyzing %s, %s", self.API_DOMAINS, conn.dst_host)
 
-            logger.debug("analyzing %s, %s", self.API_DOMAINS, conn.dst_host)
-
-            # parse config file "virustotal": {}
-            url = ""
-            for what in self._config['check']:
-                if Virustotal.CHECK_DOMAINS == what:
-                    if conn.dst_host == "" or conn.dst_ip == conn.dst_host:
-                        continue
-                    url = self.API_DOMAINS + conn.dst_host
-                elif Virustotal.CHECK_IPS == what:
-                    url = self.API_IPS + conn.dst_ip
-                elif Virustotal.CHECK_FILES_HASHES == what:
-                    checksum = conn.process_checksums[Config.OPERAND_PROCESS_HASH_MD5]
-                    if checksum != "":
-                        url = self.API_FILES + checksum
+                # parse config file "virustotal": {}
+                url = ""
+                for what in self._config['check']:
+                    if Virustotal.CHECK_DOMAINS == what:
+                        if conn.dst_host == "" or conn.dst_ip == conn.dst_host:
+                            continue
+                        url = self.API_DOMAINS + conn.dst_host
+                    elif Virustotal.CHECK_IPS == what:
+                        url = self.API_IPS + conn.dst_ip
+                    elif Virustotal.CHECK_FILES_HASHES == what:
+                        checksum = conn.process_checksums[Config.OPERAND_PROCESS_HASH_MD5]
+                        if checksum != "":
+                            url = self.API_FILES + checksum
+                        else:
+                            logger.debug("run() checksum of this process empty, skipping")
+                            continue
                     else:
-                        logger.debug("run() checksum of this process empty, skipping")
+                        logger.info("run() unknown target: %s", what)
                         continue
-                else:
-                    logger.info("run() unknown target: %s", what)
-                    continue
 
-                logger.debug("run() analyzing: %s", url)
+                    logger.debug("run() analyzing: %s", url)
 
-                vt_thread = VTAnalysis(parent, self._config, what, url, self.API_CONNECT_TIMEOUT, self.API_KEY, conn)
-                vt_thread.signals.completed.connect(self.analysis_completed)
-                vt_thread.signals.error.connect(self.analysis_error)
-                self.threadsPool.start(vt_thread)
+                    vt_thread = VTAnalysis(parent, self._config, what, url, self.API_CONNECT_TIMEOUT, self.API_KEY, conn)
+                    vt_thread.signals.completed.connect(self.analysis_completed)
+                    vt_thread.signals.error.connect(self.analysis_error)
+                    self.threadsPool.start(vt_thread)
 
+            else:
+                print("Virustotal error: parent type not supported:", type(parent))
         except Exception as e:
             logger.warning("run() exception: %s", repr(e))
         #finally:
         #    if type(parent) == PromptDialog:
         #        parent.stackedWidget.removeWidget(vt_tab)
 
-    def analysis_error(self, what, parent, conf, error, conn, response):
+    def analysis_error(self, what, parent, conf, error, response):
         logger.warning("analysis_error(): %s, %s, %s", what, error, repr(response))
         if type(parent) == PromptDialog:
-            self.update_popup(what, response, parent, conf, conn, error)
+            self.update_popup(what, response, parent, conf, error)
 
     def analysis_completed(self, what, parent, conf, conn, response):
         try:
@@ -347,16 +304,17 @@ class Virustotal(PluginBase):
                 return
 
             if type(parent) == PromptDialog:
-                self.update_popup(what, response, parent, conf, conn)
+                self.update_popup(what, response, parent, conf)
             elif type(parent) == ProcessDetailsDialog:
                 _procdialog.update_tab(what, response, parent, conf, conn)
             else:
-                logger.debug("[virustotal] analysis_completed() parent object type not supported: %s", type(parent))
+                print("[virustotal] analysis_completed() parent object type not supported:", type(parent))
 
         except Exception as e:
             logger.warning("analysis_completed() exception: %s", repr(e))
+            return
 
-    def update_popup(self, what, response, parent, config, conn, errmsg=None):
+    def update_popup(self, what, response, parent, config, errmsg=None):
         """Update pop-up widgets based on the results of the analysis.
         """
         # XXX: use PromptDialog methods to update widgets
@@ -364,7 +322,7 @@ class Virustotal(PluginBase):
         # set_app_path() <- allow to colorize text
         # etc.
 
-        error = (errmsg is not None)
+        error = (errmsg != None)
         malicious = False
         labelStyle = "color: {0}".format(config['benign-label-style'])
         try:
@@ -373,14 +331,14 @@ class Virustotal(PluginBase):
                     raise ValueError("Unauthorized (401).\nCheck the validity of the Virustotal API key.\n\n{0}".format(errmsg))
                 else:
                     raise ValueError(errmsg)
-            #if response.get('content') is None:
+            #if response.get('content') == None:
             #    raise Exception("Invalid response from server?")
 
             result = json.loads(response.content)
             # checksums API returns 404 if the hash is not in the DB.
             # XXX: result of this query could be marked as 'unknown' instead of
             # 'benign'.
-            if result.get('data') is None:
+            if result.get('data') == None:
                 logger.debug("update_popup() no data? %s, %s", what, response)
                 if Virustotal.CHECK_FILES_HASHES == what:
                     return
@@ -389,8 +347,8 @@ class Virustotal(PluginBase):
             #print("[Virustotal] RESULT:\n", conn.dst_host, "\n", result['data']['attributes']['last_analysis_stats'])
 
             # XXX: if we analyze multiple objects (domains, ips, hashes...),
-            # only the last response is stored.
-            _popups.add_vt_response(parent, result, conn)
+            # onlye the last response is stored.
+            _popups.add_vt_response(parent, result)
 
             malicious = self.is_malicious(verdict['malicious'])
 
@@ -398,21 +356,18 @@ class Virustotal(PluginBase):
         except ValueError as e:
             logger.warning("update_popup() value error: %s -> %s", repr(e), response)
             error = True
-            _popups.add_vt_response(parent, None, conn ,e)
+            _popups.add_vt_response(parent, None, e)
         except Exception as e:
             logger.warning("update_popup() exception: %s -> %s", repr(e), response)
             error = True
-            _popups.add_vt_response(parent, None, conn, "Exception: {0}".format(repr(e)))
+            _popups.add_vt_response(parent, None, "Exception: {0}".format(repr(e)))
 
         finally:
-            old_msg = parent.get_message_text()
-            if what in old_msg:
-                return
             message = "<font color=\"{0}\">{1} ({2})</font><br>{3}".format(
                 config['benign-label-style'],
                 config['benign-message'],
                 what,
-                parent.get_message_text()
+                parent.messageLabel.text()
             )
             if malicious:
                 labelStyle = "color: {0}".format(config['malicious-label-style'])
@@ -421,30 +376,24 @@ class Virustotal(PluginBase):
                     config['malicious-message'],
                     what,
                     verdict['malicious'],
-                    parent.get_message_text()
+                    parent.messageLabel.text()
                 )
-                parent.set_message_style(labelStyle)
+                parent.messageLabel.setStyleSheet(labelStyle)
             if error:
                 labelStyle = "color: darkOrange"
                 message = "<font color=\"darkOrange\">Virustotal ({0}): analysis error</font> <a href='#virustotal-warning'>(Details)</a><br>{1}".format(
                     what,
-                    parent.get_message_text()
+                    parent.messageLabel.text()
                 )
-                parent.set_message_style(labelStyle)
+                parent.messageLabel.setStyleSheet(labelStyle)
 
 
-            parent.set_message_text(message)
-
-            if Virustotal.CHECK_IPS == what:
-                parent.destIPLabel.setStyleSheet(labelStyle)
-
-            # skip setting checksum's or global labels style if there's a
-            # warning about the checksum.
-            if constants.WARNING_LABEL in parent.get_message_text():
-                return
+            parent.messageLabel.setText(message)
 
             if Virustotal.CHECK_DOMAINS == what:
-                parent.set_message_style(labelStyle)
+                parent.messageLabel.setStyleSheet(labelStyle)
+            if Virustotal.CHECK_IPS == what:
+                parent.destIPLabel.setStyleSheet(labelStyle)
             if Virustotal.CHECK_FILES_HASHES == what:
                 parent.checksumLabel.setStyleSheet(labelStyle)
 

@@ -246,7 +246,7 @@
     <message>
         <location filename="../../../opensnitch/res/firewall_rule.ui" line="268"/>
         <source>Action</source>
-        <translation>Veiksmas</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../../../opensnitch/res/firewall_rule.ui" line="279"/>
@@ -276,17 +276,17 @@
     <message>
         <location filename="../../../opensnitch/res/firewall_rule.ui" line="416"/>
         <source>Delete</source>
-        <translation>Ištrinti</translation>
+        <translation type="unfinished">Išrinti</translation>
     </message>
     <message>
         <location filename="../../../opensnitch/res/firewall_rule.ui" line="462"/>
         <source>Save</source>
-        <translation>Įrašyti</translation>
+        <translation type="unfinished">Išsaugoti</translation>
     </message>
     <message>
         <location filename="../../../opensnitch/res/firewall_rule.ui" line="473"/>
         <source>Add</source>
-        <translation>Pridėti</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../../../opensnitch/res/firewall_rule.ui" line="250"/>
@@ -339,32 +339,32 @@ REDIRECT, TPROXY, DNAT, SNAT, MASQUERADE:
     <message>
         <location filename="../../../opensnitch/res/prompt.ui" line="20"/>
         <source>Dialog</source>
-        <translation>Dialogas</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../../../opensnitch/res/prompt.ui" line="129"/>
         <source>12h</source>
-        <translation>12 val.</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../../../opensnitch/res/prompt.ui" line="371"/>
         <source>Update rule</source>
-        <translation>Atnaujinti taisyklę</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../../../opensnitch/res/prompt.ui" line="382"/>
         <source>Update All</source>
-        <translation>Atnaujinti visas</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../../../opensnitch/res/prompt.ui" line="829"/>
         <source>Checksum</source>
-        <translation>Kontrolinė suma</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../../../opensnitch/res/prompt.ui" line="923"/>
         <source>Destination Port</source>
-        <translation>Paskirties prievadas</translation>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -707,7 +707,7 @@ es que no hemos descubierto el PID (por ejemplo conexiones que no se originan en
     <message>
         <location filename="../../../opensnitch/res/preferences.ui" line="503"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;By default when a new pop-up appears, in its simplest form, you&apos;ll be able to filter connections or applications by one property of the connection (executable, port, IP, etc).&lt;/p&gt;&lt;p&gt;With these options, you can choose multiple fields to filter connections for.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;By default when a new pop-up appears, in its simplest form, you&apos;ll be able to filter connections or applications by one property of the connection (executable, port, IP, etc).&lt;/p&gt;&lt;p&gt;With these options, you can choose multiple fields to filter connections for.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;By default when a new pop-up appears, in its simplest form, you'll be able to filter connections or applications by one property of the connection (executable, port, IP, etc).&lt;/p&gt;&lt;p&gt;With these options, you can choose multiple fields to filter connections for.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../../../opensnitch/res/preferences.ui" line="506"/>
@@ -787,12 +787,12 @@ es que no hemos descubierto el PID (por ejemplo conexiones que no se originan en
     <message>
         <location filename="../../../opensnitch/res/preferences.ui" line="478"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;When this option is selected, the rules of the selected duration won&apos;t be added to the list of temporary rules in the GUI.&lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;Temporary rules will still be valid, and you can use them when prompted to allow/deny a new connection.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation type="obsolete">&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;When this option is selected, the rules of the selected duration won&apos;t be added to the list of temporary rules in the GUI.&lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;Temporary rules will still be valid, and you can use them when prompted to allow/deny a new connection.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation type="obsolete">&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;When this option is selected, the rules of the selected duration won't be added to the list of temporary rules in the GUI.&lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;Temporary rules will still be valid, and you can use them when prompted to allow/deny a new connection.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../../../opensnitch/res/preferences.ui" line="481"/>
         <source>Don&apos;t save rules of duration</source>
-        <translation type="obsolete">Don&apos;t save rules of duration</translation>
+        <translation type="obsolete">Don't save rules of duration</translation>
     </message>
     <message>
         <location filename="../../../opensnitch/res/preferences.ui" line="463"/>
@@ -837,22 +837,22 @@ es que no hemos descubierto el PID (por ejemplo conexiones que no se originan en
     <message>
         <location filename="../../../opensnitch/res/preferences.ui" line="332"/>
         <source>by PID</source>
-        <translation>pagal PID</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../../../opensnitch/res/preferences.ui" line="1038"/>
         <source>Desktop notifications</source>
-        <translation>Darbalaukio pranešimai</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../../../opensnitch/res/preferences.ui" line="1068"/>
         <source>Use system notifications</source>
-        <translation>Naudoti sistemos pranešimus</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../../../opensnitch/res/preferences.ui" line="1084"/>
         <source>Use Qt notifications</source>
-        <translation>Naudoti Qt pranešimus</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../../../opensnitch/res/preferences.ui" line="1113"/>
@@ -867,7 +867,7 @@ es que no hemos descubierto el PID (por ejemplo conexiones que no se originan en
     <message>
         <location filename="../../../opensnitch/res/preferences.ui" line="797"/>
         <source>Theme</source>
-        <translation>Apipavidalinimas</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../../../opensnitch/res/preferences.ui" line="1617"/>
@@ -907,12 +907,12 @@ es que no hemos descubierto el PID (por ejemplo conexiones que no se originan en
     <message>
         <location filename="../../../opensnitch/res/preferences.ui" line="1197"/>
         <source>Command line</source>
-        <translation>Komandų eilutė</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../../../opensnitch/res/preferences.ui" line="1939"/>
         <source>Rules</source>
-        <translation>Taisyklės</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../../../opensnitch/res/preferences.ui" line="1350"/>
@@ -954,7 +954,7 @@ Temporary rules will still be valid, and you can use them when prompted to allow
     <message>
         <location filename="../../../opensnitch/res/preferences.ui" line="564"/>
         <source>Language</source>
-        <translation>Kalba</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../../../opensnitch/res/preferences.ui" line="181"/>
@@ -964,17 +964,17 @@ Temporary rules will still be valid, and you can use them when prompted to allow
     <message>
         <location filename="../../../opensnitch/res/preferences.ui" line="275"/>
         <source>12h</source>
-        <translation>12 val.</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../../../opensnitch/res/preferences.ui" line="397"/>
         <source>More</source>
-        <translation>Daugiau</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../../../opensnitch/res/preferences.ui" line="488"/>
         <source>checksum</source>
-        <translation>kontrolinė suma</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../../../opensnitch/res/preferences.ui" line="1506"/>
@@ -1012,7 +1012,7 @@ Use ; to define multiple screens: 1;1.5 etc...</source>
     <message>
         <location filename="../../../opensnitch/res/preferences.ui" line="765"/>
         <source>ex: 1, 1.25, 1.5, 2, ...</source>
-        <translation>pvz.: 1, 1.25, 1.5, 2, ...</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../../../opensnitch/res/preferences.ui" line="781"/>
@@ -1040,7 +1040,7 @@ wayland</source>
     <message>
         <location filename="../../../opensnitch/res/preferences.ui" line="880"/>
         <source>Server</source>
-        <translation>Serveris</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../../../opensnitch/res/preferences.ui" line="1900"/>
@@ -1072,7 +1072,7 @@ wayland</source>
     <message>
         <location filename="../../../opensnitch/res/preferences.ui" line="1819"/>
         <source>Authentication type</source>
-        <translation>Tapatybės nustatymo tipas</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../../../opensnitch/res/preferences.ui" line="1807"/>
@@ -1117,7 +1117,7 @@ wayland</source>
     <message>
         <location filename="../../../opensnitch/res/preferences.ui" line="1914"/>
         <source>&lt;a href=&quot;https://github.com/evilsocket/opensnitch/wiki/Nodes-authentication#nodes-authentication-added-in-v161&quot;&gt;More information&lt;/a&gt;</source>
-        <translation>&lt;a href=&quot;https://github.com/evilsocket/opensnitch/wiki/Nodes-authentication#nodes-authentication-added-in-v161&quot;&gt;Daugiau informacijos&lt;/a&gt;</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../../../opensnitch/res/preferences.ui" line="1003"/>
@@ -1131,12 +1131,12 @@ or a network socket: 127.0.0.1:50051</source>
     <message>
         <location filename="../../../opensnitch/res/preferences.ui" line="1050"/>
         <source>Enable</source>
-        <translation>Įjungti</translation>
+        <translation type="unfinished">Įjungti</translation>
     </message>
     <message>
         <location filename="../../../opensnitch/res/preferences.ui" line="1167"/>
         <source>Source port</source>
-        <translation>Šaltinio prievadas</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../../../opensnitch/res/preferences.ui" line="1174"/>
@@ -1146,7 +1146,7 @@ or a network socket: 127.0.0.1:50051</source>
     <message>
         <location filename="../../../opensnitch/res/preferences.ui" line="1287"/>
         <source>PID</source>
-        <translation>PID</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../../../opensnitch/res/preferences.ui" line="1294"/>
@@ -1166,7 +1166,7 @@ or a network socket: 127.0.0.1:50051</source>
     <message>
         <location filename="../../../opensnitch/res/preferences.ui" line="1327"/>
         <source>UID</source>
-        <translation>UID</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../../../opensnitch/res/preferences.ui" line="1512"/>
@@ -1201,7 +1201,7 @@ or a network socket: 127.0.0.1:50051</source>
     <message>
         <location filename="../../../opensnitch/res/preferences.ui" line="1801"/>
         <source>Authentication</source>
-        <translation>Tapatybės nustatymas</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../../../opensnitch/res/preferences.ui" line="1816"/>
@@ -1246,12 +1246,12 @@ or a network socket: 127.0.0.1:50051</source>
     <message>
         <location filename="../../../opensnitch/res/preferences.ui" line="1956"/>
         <source>md5</source>
-        <translation>md5</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../../../opensnitch/res/preferences.ui" line="1975"/>
         <source>sha1</source>
-        <translation>sha1</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../../../opensnitch/res/preferences.ui" line="1984"/>
@@ -1266,7 +1266,7 @@ or a network socket: 127.0.0.1:50051</source>
     <message>
         <location filename="../../../opensnitch/res/preferences.ui" line="2009"/>
         <source>Path</source>
-        <translation>Kelias</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../../../opensnitch/res/preferences.ui" line="2020"/>
@@ -1286,7 +1286,7 @@ or a network socket: 127.0.0.1:50051</source>
     <message>
         <location filename="../../../opensnitch/res/preferences.ui" line="2056"/>
         <source>50</source>
-        <translation>50</translation>
+        <translation type="unfinished">50</translation>
     </message>
     <message>
         <location filename="../../../opensnitch/res/preferences.ui" line="2066"/>
@@ -1301,7 +1301,7 @@ or a network socket: 127.0.0.1:50051</source>
     <message>
         <location filename="../../../opensnitch/res/preferences.ui" line="2102"/>
         <source>250</source>
-        <translation>250</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../../../opensnitch/res/preferences.ui" line="2112"/>
@@ -1805,7 +1805,7 @@ Taisyklę turite pavadinti taip, kad ji būtų tikrinama pirma, nes taisyklės t
     <message>
         <location filename="../../../opensnitch/res/ruleseditor.ui" line="96"/>
         <source>Applications</source>
-        <translation>Programos</translation>
+        <translation type="unfinished">Programos</translation>
     </message>
     <message>
         <location filename="../../../opensnitch/res/ruleseditor.ui" line="105"/>
@@ -1815,7 +1815,7 @@ Taisyklę turite pavadinti taip, kad ji būtų tikrinama pirma, nes taisyklės t
     <message>
         <location filename="../../../opensnitch/res/ruleseditor.ui" line="115"/>
         <source>Is regular expression</source>
-        <translation>Yra reguliarusis reiškinys</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../../../opensnitch/res/ruleseditor.ui" line="139"/>
@@ -1881,32 +1881,32 @@ Taisyklę turite pavadinti taip, kad ji būtų tikrinama pirma, nes taisyklės t
     <message>
         <location filename="../../../opensnitch/res/ruleseditor.ui" line="836"/>
         <source>More</source>
-        <translation>Daugiau</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../../../opensnitch/res/ruleseditor.ui" line="316"/>
         <source>ICMP</source>
-        <translation>ICMP</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../../../opensnitch/res/ruleseditor.ui" line="321"/>
         <source>ICMP6</source>
-        <translation>ICMP6</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../../../opensnitch/res/ruleseditor.ui" line="326"/>
         <source>SCTP</source>
-        <translation>SCTP</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../../../opensnitch/res/ruleseditor.ui" line="331"/>
         <source>SCTP6</source>
-        <translation>SCTP6</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../../../opensnitch/res/ruleseditor.ui" line="613"/>
         <source>Network interface</source>
-        <translation>Tinklo sąsaja</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../../../opensnitch/res/ruleseditor.ui" line="893"/>
@@ -1921,7 +1921,7 @@ Taisyklę turite pavadinti taip, kad ji būtų tikrinama pirma, nes taisyklės t
     <message>
         <location filename="../../../opensnitch/res/ruleseditor.ui" line="75"/>
         <source>Description...</source>
-        <translation>Aprašas...</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../../../opensnitch/res/ruleseditor.ui" line="493"/>
@@ -2160,17 +2160,17 @@ Feedback is welcome</source>
     <message>
         <location filename="../../../opensnitch/res/stats.ui" line="1966"/>
         <source>0</source>
-        <translation>0</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../../../opensnitch/res/stats.ui" line="436"/>
         <source>Delete this node</source>
-        <translation>Ištrinti šį mazgą</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../../../opensnitch/res/stats.ui" line="453"/>
         <source>Show the preferences of this node</source>
-        <translation>Rodyti šio mazgo nuostatas</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../../../opensnitch/res/stats.ui" line="470"/>
@@ -2180,17 +2180,17 @@ Feedback is welcome</source>
     <message>
         <location filename="../../../opensnitch/res/stats.ui" line="736"/>
         <source>2</source>
-        <translation>2</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../../../opensnitch/res/stats.ui" line="944"/>
         <source>System rules</source>
-        <translation>Sistemos taisyklės</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../../../opensnitch/res/stats.ui" line="571"/>
         <source>&lt;h3&gt;Node&lt;/h3&gt;</source>
-        <translation>&lt;h3&gt;Mazgas&lt;/h3&gt;</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../../../opensnitch/res/stats.ui" line="587"/>
@@ -2200,7 +2200,7 @@ Feedback is welcome</source>
     <message>
         <location filename="../../../opensnitch/res/stats.ui" line="629"/>
         <source>%p%</source>
-        <translation>%p%</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../../../opensnitch/res/stats.ui" line="613"/>
@@ -2210,7 +2210,7 @@ Feedback is welcome</source>
     <message>
         <location filename="../../../opensnitch/res/stats.ui" line="642"/>
         <source>Processes:</source>
-        <translation>Procesai:</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../../../opensnitch/res/stats.ui" line="649"/>
@@ -2225,7 +2225,7 @@ Feedback is welcome</source>
     <message>
         <location filename="../../../opensnitch/res/stats.ui" line="669"/>
         <source>daemon:</source>
-        <translation>tarnyba:</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../../../opensnitch/res/stats.ui" line="785"/>
@@ -2290,12 +2290,12 @@ Feedback is welcome</source>
     <message>
         <location filename="../../../opensnitch/res/stats.ui" line="1671"/>
         <source>All nodes</source>
-        <translation>Visi mazgai</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../../../opensnitch/res/stats.ui" line="1692"/>
         <source>Protocol</source>
-        <translation>Protokolas</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../../../opensnitch/res/stats.ui" line="1777"/>
@@ -2320,7 +2320,7 @@ Feedback is welcome</source>
     <message>
         <location filename="../../../opensnitch/res/stats.ui" line="2304"/>
         <source>Daemon version</source>
-        <translation>Tarnybos versija</translation>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -2353,7 +2353,7 @@ Feedback is welcome</source>
     <message>
         <location filename="../../../opensnitch/service.py" line="58"/>
         <source>Open main window</source>
-        <translation>Atverti pagrindinį langą</translation>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -2361,12 +2361,12 @@ Feedback is welcome</source>
     <message>
         <location filename="../../../opensnitch/dialogs/firewall.py" line="94"/>
         <source>Configuration applied.</source>
-        <translation>Konfigūracija pritaikyta.</translation>
+        <translation type="unfinished">Konfigūracija pritaikyta.</translation>
     </message>
     <message>
         <location filename="../../../opensnitch/dialogs/firewall.py" line="213"/>
         <source>Applying changes...</source>
-        <translation>Taikomi pakeitimai...</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../../../opensnitch/dialogs/firewall.py" line="254"/>
@@ -2386,12 +2386,12 @@ Feedback is welcome</source>
     <message>
         <location filename="../../../opensnitch/dialogs/firewall.py" line="329"/>
         <source>Enabling firewall...</source>
-        <translation>Įjungiama užkarda...</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../../../opensnitch/dialogs/firewall.py" line="331"/>
         <source>Disabling firewall...</source>
-        <translation>Išjungiama užkarda...</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../../../opensnitch/dialogs/firewall_rule.py" line="72"/>
@@ -2467,12 +2467,12 @@ Feedback is welcome</source>
     <message>
         <location filename="../../../opensnitch/dialogs/firewall_rule.py" line="400"/>
         <source>Rule deleted</source>
-        <translation>Taisyklė ištrinta</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../../../opensnitch/dialogs/firewall_rule.py" line="408"/>
         <source>Rule added</source>
-        <translation>Taisyklė pridėta</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../../../opensnitch/dialogs/firewall_rule.py" line="450"/>
@@ -2482,17 +2482,17 @@ Feedback is welcome</source>
     <message>
         <location filename="../../../opensnitch/dialogs/firewall_rule.py" line="470"/>
         <source>Deleting rule, wait</source>
-        <translation>Taisyklė ištrinama, palaukite</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../../../opensnitch/dialogs/firewall_rule.py" line="473"/>
         <source>Error updating rule</source>
-        <translation>Klaida atnaujinant taisyklę</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../../../opensnitch/dialogs/firewall_rule.py" line="519"/>
         <source>Adding rule, wait</source>
-        <translation>Taisyklė pridedama, palaukite</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../../../opensnitch/dialogs/firewall_rule.py" line="529"/>
@@ -2532,7 +2532,7 @@ Feedback is welcome</source>
     <message>
         <location filename="../../../opensnitch/dialogs/firewall_rule.py" line="1524"/>
         <source>Firewall rule</source>
-        <translation>Užkardos taisyklė</translation>
+        <translation type="unfinished">Užkardos taisyklė</translation>
     </message>
     <message>
         <location filename="../../../opensnitch/dialogs/firewall_rule.py" line="1058"/>
@@ -2547,7 +2547,7 @@ Feedback is welcome</source>
     <message>
         <location filename="../../../opensnitch/dialogs/firewall_rule.py" line="1184"/>
         <source>This rule is not supported yet.</source>
-        <translation>Ši taisyklė kol kas nepalaikoma.</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../../../opensnitch/dialogs/firewall_rule.py" line="1249"/>
@@ -2719,7 +2719,7 @@ The value must be in the format: VALUE/UNITS/TIME, for example:
     <message>
         <location filename="../../../opensnitch/dialogs/firewall.py" line="97"/>
         <source>There was an error: {0}</source>
-        <translation>Įvyko klaida: {0}</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../../../opensnitch/dialogs/firewall.py" line="150"/>
@@ -2755,12 +2755,12 @@ The value must be in the format: VALUE/UNITS, for example:
     <message>
         <location filename="../../../opensnitch/dialogs/firewall_rule.py" line="406"/>
         <source>Rule saved</source>
-        <translation>Taisyklė įrašyta</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../../../opensnitch/dialogs/firewall_rule.py" line="418"/>
         <source>Error saving rule</source>
-        <translation>Klaida įrašant taisyklę</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../../../opensnitch/dialogs/firewall_rule.py" line="508"/>
@@ -2802,17 +2802,17 @@ The value must be in the format: VALUE/UNITS, for example:
     <message>
         <location filename="../../../opensnitch/service.py" line="367"/>
         <source>Info</source>
-        <translation>Informacija</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../../../opensnitch/service.py" line="371"/>
         <source>Error</source>
-        <translation>Klaida</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../../../opensnitch/service.py" line="375"/>
         <source>Warning</source>
-        <translation>Įspėjimas</translation>
+        <translation type="unfinished">Įspėjimas</translation>
     </message>
 </context>
 <context>

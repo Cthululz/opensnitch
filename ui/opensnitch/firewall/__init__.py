@@ -9,15 +9,7 @@ from .enums import *
 from .rules import *
 from .chains import *
 from .exprs import *
-from .profiles import (
-    Profiles,
-    ProfileAcceptInput,
-    ProfileDropInput,
-    ProfileAcceptOutput,
-    ProfileDropOutput,
-    ProfileAcceptForward,
-    ProfileDropForward
-)
+from .profiles import *
 
 class Firewall(QObject):
     __instance = None
@@ -50,7 +42,7 @@ class Firewall(QObject):
         return self.rules.delete(addr, uuid)
 
     def change_rule_field(self, addr, uuid, field, value):
-        addr, chain = self.get_rule_by_uuid(uuid, addr)
+        addr, chain = self.get_rule_by_uuid(uuid)
         if chain is None:
             return None, None
 
@@ -61,7 +53,7 @@ class Firewall(QObject):
         return self.update_rule(addr, uuid, chain)
 
     def enable_rule(self, addr, uuid, enable):
-        addr, chain = self.get_rule_by_uuid(uuid, addr)
+        addr, chain = self.get_rule_by_uuid(uuid)
         if chain is None:
             return None, None
 
@@ -137,7 +129,7 @@ class Firewall(QObject):
     def swap_rules(self, view, addr, uuid, old_pos, new_pos):
         return self.rules.swap(view, addr, uuid, old_pos, new_pos)
 
-    def get_rule_by_uuid(self, uuid, naddr=None):
+    def get_rule_by_uuid(self, uuid):
         """get rule by uuid, in string format
         """
         if uuid == "":
@@ -146,10 +138,8 @@ class Firewall(QObject):
             node = self._nodes.get_node(addr)
             if not 'fwrules' in node:
                 continue
-            if naddr is not None and naddr != addr:
-                continue
             r = node['fwrules'].get(uuid)
-            if r is not None:
+            if r != None:
                 return addr, r
 
         return None, None

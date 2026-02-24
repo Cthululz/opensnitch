@@ -372,7 +372,7 @@ OMDIRIGERA, TPROXY, DNAT, SNAT, MASQUERADE:
     <message>
         <location filename="../../../opensnitch/res/prompt.ui" line="923"/>
         <source>Destination Port</source>
-        <translation>Destinationsport</translation>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -1249,7 +1249,7 @@ eller en nätverkssocket: 127.0.0.1:50051</translation>
     <message>
         <location filename="../../../opensnitch/res/preferences.ui" line="1875"/>
         <source>req-cert</source>
-        <translation>req-cert</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../../../opensnitch/res/preferences.ui" line="1880"/>

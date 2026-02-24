@@ -368,17 +368,8 @@
        <string>Nodes</string>
       </attribute>
       <layout class="QGridLayout" name="gridLayout_6">
-       <property name="leftMargin">
-        <number>0</number>
-       </property>
-       <property name="rightMargin">
-        <number>0</number>
-       </property>
-       <property name="bottomMargin">
-        <number>0</number>
-       </property>
        <item row="0" column="0">
-        <layout class="QHBoxLayout" name="nodesToolbar">
+        <layout class="QHBoxLayout" name="horizontalLayout_12">
          <item>
           <widget class="QPushButton" name="cmdNodesBack">
            <property name="text">
@@ -514,21 +505,6 @@
            <enum>QFrame::Shadow::Raised</enum>
           </property>
           <layout class="QGridLayout" name="gridLayout_3">
-           <property name="leftMargin">
-            <number>0</number>
-           </property>
-           <property name="topMargin">
-            <number>0</number>
-           </property>
-           <property name="rightMargin">
-            <number>0</number>
-           </property>
-           <property name="bottomMargin">
-            <number>0</number>
-           </property>
-           <property name="spacing">
-            <number>0</number>
-           </property>
            <item row="0" column="0">
             <widget class="GenericTableView" name="nodesTable">
              <property name="frameShape">
@@ -542,9 +518,6 @@
              </property>
              <property name="selectionBehavior">
               <enum>QAbstractItemView::SelectionBehavior::SelectRows</enum>
-             </property>
-             <property name="horizontalScrollMode">
-              <enum>QAbstractItemView::ScrollMode::ScrollPerPixel</enum>
              </property>
              <property name="showGrid">
               <bool>false</bool>
@@ -581,8 +554,8 @@
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>341</width>
-             <height>419</height>
+             <width>183</width>
+             <height>204</height>
             </rect>
            </property>
            <layout class="QGridLayout" name="gridLayout_5">
@@ -720,15 +693,6 @@
        <string>Rules</string>
       </attribute>
       <layout class="QGridLayout" name="gridLayout_2">
-       <property name="leftMargin">
-        <number>2</number>
-       </property>
-       <property name="rightMargin">
-        <number>2</number>
-       </property>
-       <property name="bottomMargin">
-        <number>2</number>
-       </property>
        <item row="2" column="0">
         <widget class="QSplitter" name="rulesSplitter">
          <property name="sizePolicy">
@@ -746,9 +710,6 @@
             <horstretch>0</horstretch>
             <verstretch>0</verstretch>
            </sizepolicy>
-          </property>
-          <property name="autoScroll">
-           <bool>false</bool>
           </property>
           <property name="animated">
            <bool>true</bool>
@@ -898,9 +859,6 @@
            </item>
            <item>
             <widget class="GenericTableView" name="alertsTable">
-             <property name="autoScroll">
-              <bool>false</bool>
-             </property>
              <property name="editTriggers">
               <set>QAbstractItemView::EditTrigger::AnyKeyPressed|QAbstractItemView::EditTrigger::EditKeyPressed</set>
              </property>
@@ -917,9 +875,6 @@
            </item>
            <item>
             <widget class="GenericTableView" name="rulesTable">
-             <property name="autoScroll">
-              <bool>false</bool>
-             </property>
              <property name="selectionBehavior">
               <enum>QAbstractItemView::SelectionBehavior::SelectRows</enum>
              </property>
@@ -928,13 +883,6 @@
              </property>
              <property name="showGrid">
               <bool>false</bool>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="QScrollBar" name="alertsScrollBar">
-             <property name="orientation">
-              <enum>Qt::Vertical</enum>
              </property>
             </widget>
            </item>
@@ -1011,7 +959,7 @@
         </layout>
        </item>
        <item row="0" column="0">
-        <layout class="QHBoxLayout" name="rulesToolbar">
+        <layout class="QHBoxLayout" name="rulesToolbarLayout">
          <item>
           <widget class="QPushButton" name="cmdRulesBack">
            <property name="text">
@@ -1110,7 +1058,7 @@
         <number>0</number>
        </property>
        <item>
-        <layout class="QHBoxLayout" name="hostsToolbar">
+        <layout class="QHBoxLayout" name="horizontalLayout_3">
          <item>
           <widget class="QPushButton" name="cmdHostsBack">
            <property name="text">
@@ -1149,9 +1097,6 @@
           <widget class="GenericTableView" name="hostsTable">
            <property name="frameShape">
             <enum>QFrame::Shape::NoFrame</enum>
-           </property>
-           <property name="autoScroll">
-            <bool>false</bool>
            </property>
            <property name="selectionBehavior">
             <enum>QAbstractItemView::SelectionBehavior::SelectRows</enum>
@@ -1206,7 +1151,7 @@
         <number>0</number>
        </property>
        <item>
-        <layout class="QHBoxLayout" name="procsToolbar">
+        <layout class="QHBoxLayout" name="horizontalLayout_2">
          <item>
           <widget class="QPushButton" name="cmdProcsBack">
            <property name="enabled">
@@ -1269,9 +1214,6 @@
            <property name="frameShadow">
             <enum>QFrame::Shadow::Plain</enum>
            </property>
-           <property name="autoScroll">
-            <bool>false</bool>
-           </property>
            <property name="selectionBehavior">
             <enum>QAbstractItemView::SelectionBehavior::SelectRows</enum>
            </property>
@@ -1325,7 +1267,7 @@
         <number>0</number>
        </property>
        <item>
-        <layout class="QHBoxLayout" name="addrsToolbar">
+        <layout class="QHBoxLayout" name="horizontalLayout_4">
          <item>
           <widget class="QPushButton" name="cmdAddrsBack">
            <property name="text">
@@ -1362,9 +1304,6 @@
          </property>
          <item>
           <widget class="GenericTableView" name="addrTable">
-           <property name="autoScroll">
-            <bool>false</bool>
-           </property>
            <property name="selectionBehavior">
             <enum>QAbstractItemView::SelectionBehavior::SelectRows</enum>
            </property>
@@ -1421,7 +1360,7 @@
         <number>0</number>
        </property>
        <item>
-        <layout class="QHBoxLayout" name="portsToolbar">
+        <layout class="QHBoxLayout" name="horizontalLayout_5">
          <item>
           <widget class="QPushButton" name="cmdPortsBack">
            <property name="text">
@@ -1458,14 +1397,8 @@
          </property>
          <item>
           <widget class="GenericTableView" name="portsTable">
-           <property name="autoScroll">
-            <bool>false</bool>
-           </property>
            <property name="selectionBehavior">
             <enum>QAbstractItemView::SelectionBehavior::SelectRows</enum>
-           </property>
-           <property name="horizontalScrollMode">
-            <enum>QAbstractItemView::ScrollMode::ScrollPerPixel</enum>
            </property>
            <property name="showGrid">
             <bool>false</bool>
@@ -1514,7 +1447,7 @@
         <number>0</number>
        </property>
        <item>
-        <layout class="QHBoxLayout" name="usersToolbar">
+        <layout class="QHBoxLayout" name="horizontalLayout_6">
          <item>
           <widget class="QPushButton" name="cmdUsersBack">
            <property name="text">
@@ -1551,14 +1484,8 @@
          </property>
          <item>
           <widget class="GenericTableView" name="usersTable">
-           <property name="autoScroll">
-            <bool>false</bool>
-           </property>
            <property name="selectionBehavior">
             <enum>QAbstractItemView::SelectionBehavior::SelectRows</enum>
-           </property>
-           <property name="horizontalScrollMode">
-            <enum>QAbstractItemView::ScrollMode::ScrollPerPixel</enum>
            </property>
            <property name="showGrid">
             <bool>false</bool>
@@ -1603,14 +1530,8 @@
          </property>
          <item>
           <widget class="GenericTableView" name="netstatTable">
-           <property name="autoScroll">
-            <bool>false</bool>
-           </property>
            <property name="selectionBehavior">
             <enum>QAbstractItemView::SelectionBehavior::SelectRows</enum>
-           </property>
-           <property name="horizontalScrollMode">
-            <enum>QAbstractItemView::ScrollMode::ScrollPerPixel</enum>
            </property>
            <property name="showGrid">
             <bool>false</bool>
@@ -1639,7 +1560,7 @@
         </layout>
        </item>
        <item row="0" column="0">
-        <layout class="QHBoxLayout" name="netstatToolbar">
+        <layout class="QHBoxLayout" name="horizontalLayout_20">
          <item>
           <widget class="QPushButton" name="cmdNetstatBack">
            <property name="text">

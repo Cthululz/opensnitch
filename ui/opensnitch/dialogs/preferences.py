@@ -93,6 +93,18 @@ class PreferencesDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
         self.applyButton.clicked.connect(self._cb_apply_button_clicked)
         self.cancelButton.clicked.connect(self._cb_cancel_button_clicked)
         self.helpButton.clicked.connect(self._cb_help_button_clicked)
+
+        # Add Reset to Defaults button
+        self.resetButton = QtWidgets.QPushButton(QC.translate("preferences", "Reset to Defaults"))
+        self.resetButton.setObjectName("resetButton")
+        # Find the button layout and add the reset button
+        button_layout = self.acceptButton.parent().layout()
+        if button_layout and hasattr(button_layout, 'insertWidget'):
+            button_layout.insertWidget(0, self.resetButton)
+        else:
+            # For QGridLayout, use addWidget
+            button_layout.addWidget(self.resetButton)
+        self.resetButton.clicked.connect(self._cb_reset_to_defaults)
         self.popupsCheck.clicked.connect(self._cb_popups_check_toggled)
         self.dbFileButton.clicked.connect(self._cb_file_db_clicked)
         self.cmdTimeoutUp.clicked.connect(lambda: self._cb_cmd_spin_clicked(self.spinUITimeout, self.SUM))
@@ -1167,6 +1179,26 @@ class PreferencesDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
                          "Hover the mouse over the texts to display the help<br><br>Don't forget to visit the wiki: <a href=\"{0}\">{0}</a>"
                          ).format(Config.HELP_URL)
         )
+
+    def _cb_reset_to_defaults(self):
+        from PyQt6 import QtWidgets
+        ret = QtWidgets.QMessageBox.question(
+            self,
+            QC.translate("preferences", "Reset to Defaults"),
+            QC.translate("preferences", "Are you sure you want to reset all settings to defaults?"),
+            QtWidgets.QMessageBox.StandardButton.Yes | QtWidgets.QMessageBox.StandardButton.No
+        )
+        if ret == QtWidgets.QMessageBox.StandardButton.Yes:
+            # Clear all settings
+            self._cfg._settings = {}
+            self._cfg.saveSettings()
+            # Refresh the dialog to show defaults
+            self._load_settings()
+            QtWidgets.QMessageBox.information(
+                self,
+                QC.translate("preferences", "Reset Complete"),
+                QC.translate("preferences", "Settings have been reset to defaults. Please restart the application.")
+            )
 
     def _cb_popups_check_toggled(self, checked):
         self.spinUITimeout.setEnabled(not checked)

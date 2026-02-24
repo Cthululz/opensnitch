@@ -991,14 +991,6 @@ class StatsDialog(menus.MenusManager, menu_actions.MenuActions, views.ViewsManag
         self.rulesTable.setVisible(not showFwTable and not showAlertsTable)
         self.rulesScrollBar.setVisible(not showFwTable and not showAlertsTable)
 
-        # Handle Applications and Networks top-level clicks - show summary
-        if parent_row == -1 and item_row == constants.RULES_TREE_APPS:
-            self.queries._show_applications_summary()
-            return
-        elif parent_row == -1 and item_row == constants.RULES_TREE_NETWORKS:
-            self.queries._show_networks_summary()
-            return
-
         self.queries.set_rules_filter(parent_row, item_row, item_text, node_addr, fw_table)
 
     def _cb_splitter_moved(self, tab, pos, index):
@@ -1211,31 +1203,34 @@ class StatsDialog(menus.MenusManager, menu_actions.MenuActions, views.ViewsManag
     def _add_network_targets_tree_item(self):
         """Add Network targets tree item with Permanent and Temporary children"""
         from PyQt6.QtCore import Qt
-        from PyQt6.QtGui import QFont
-        try:
-            # Create new top-level item for Network Targets
-            network_item = QtWidgets.QTreeWidgetItem(self.rulesTreePanel)
-            network_item.setText(0, "Network targets")
-            font = QFont()
-            font.setPointSize(10)
-            font.setBold(True)
-            network_item.setFont(0, font)
+        # Create new top-level item for Network Targets
+        network_item = QtWidgets.QTreeWidgetItem(self.rulesTreePanel)
+        network_item.setText(0, QC.translate("stats", "Network targets"))
+        font = network_item.font(0)
+        font.setPointSize(10)
+        font.setBold(True)
+        network_item.setFont(0, font)
+        # Set icon
+        icon = Icons.new(self, "network-server")
+        network_item.setIcon(0, icon)
 
-            # Add Permanent child
-            permanent_item = QtWidgets.QTreeWidgetItem(network_item)
-            permanent_item.setText(0, "Permanent")
-            permanent_font = QFont()
-            permanent_font.setPointSize(10)
-            permanent_item.setFont(0, permanent_font)
+        # Add Permanent child
+        permanent_item = QtWidgets.QTreeWidgetItem(network_item)
+        permanent_item.setText(0, QC.translate("stats", "Permanent"))
+        permanent_font = permanent_item.font(0)
+        permanent_font.setPointSize(10)
+        permanent_item.setFont(0, permanent_font)
+        perm_icon = Icons.new(self, "security-medium")
+        permanent_item.setIcon(0, perm_icon)
 
-            # Add Temporary child
-            temporary_item = QtWidgets.QTreeWidgetItem(network_item)
-            temporary_item.setText(0, "Temporary")
-            temp_font = QFont()
-            temp_font.setPointSize(10)
-            temporary_item.setFont(0, temp_font)
-        except Exception as e:
-            print(f"Error adding network targets: {e}")
+        # Add Temporary child
+        temporary_item = QtWidgets.QTreeWidgetItem(network_item)
+        temporary_item.setText(0, QC.translate("stats", "Temporary"))
+        temp_font = temporary_item.font(0)
+        temp_font.setPointSize(10)
+        temporary_item.setFont(0, temp_font)
+        temp_icon = Icons.new(self, "edit-clear")
+        temporary_item.setIcon(0, temp_icon)
 
     def _add_rulesTree_nodes(self):
         if self.nodes_count() == 0:

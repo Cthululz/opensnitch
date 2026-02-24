@@ -139,7 +139,6 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
     RULES_TREE_ALERTS = 1
     RULES_TREE_NODES = 2
     RULES_TREE_FIREWALL = 3
-    RULES_TREE_NETWORKS = 4  # New: Network targets (dest.ip, dest.host, dest.network)
 
     RULES_TREE_PERMANENT = 0
     RULES_TREE_TEMPORARY = 1
@@ -539,10 +538,6 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
         self.nodesSplitter.splitterMoved.connect(lambda pos, index: self._cb_splitter_moved(self.TAB_NODES, pos, index))
         self.rulesTreePanel.itemClicked.connect(self._cb_rules_tree_item_clicked)
         self.rulesTreePanel.itemDoubleClicked.connect(self._cb_rules_tree_item_double_clicked)
-
-        # Add "Network targets" tree item (dest.ip, dest.host, dest.network)
-        self._add_network_targets_tree_item()
-
         self.enableRuleCheck.clicked.connect(self._cb_enable_rule_toggled)
         self.editRuleButton.clicked.connect(self._cb_edit_rule_clicked)
         self.newRuleButton.clicked.connect(self._cb_new_rule_clicked)
@@ -2426,14 +2421,6 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
         self.rulesTable.setVisible(not showFwTable and not showAlertsTable)
         self.rulesScrollBar.setVisible(not showFwTable)
 
-        # Handle Applications and Networks top-level clicks - show summary
-        if parent_row == -1 and item_row == self.RULES_TREE_APPS:
-            self._show_applications_summary()
-            return
-        elif parent_row == -1 and item_row == self.RULES_TREE_NETWORKS:
-            self._show_networks_summary()
-            return
-
         self._set_rules_filter(parent_row, item_row, item.text(0), node_addr, fw_table)
 
     def _cb_splitter_moved(self, tab, pos, index):
@@ -2688,34 +2675,6 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
             nodesItem.takeChildren()
             for n in self._nodes.get_nodes():
                 nodesItem.addChild(QtWidgets.QTreeWidgetItem([n]))
-
-    def _add_network_targets_tree_item(self):
-        """Add Network targets tree item with Permanent and Temporary children"""
-        from PyQt6.QtGui import QFont
-        try:
-            # Create new top-level item for Network Targets
-            network_item = QtWidgets.QTreeWidgetItem(self.rulesTreePanel)
-            network_item.setText(0, "Network targets")
-            font = QFont()
-            font.setPointSize(10)
-            font.setBold(True)
-            network_item.setFont(0, font)
-
-            # Add Permanent child
-            permanent_item = QtWidgets.QTreeWidgetItem(network_item)
-            permanent_item.setText(0, "Permanent")
-            permanent_font = QFont()
-            permanent_font.setPointSize(10)
-            permanent_item.setFont(0, permanent_font)
-
-            # Add Temporary child
-            temporary_item = QtWidgets.QTreeWidgetItem(network_item)
-            temporary_item.setText(0, "Temporary")
-            temp_font = QFont()
-            temp_font.setPointSize(10)
-            temporary_item.setFont(0, temp_font)
-        except Exception as e:
-            print(f"Error adding network targets: {e}")
 
     def _find_tree_fw_items(self, item_data):
         """find fw items by data stored in UserRole role.
@@ -4790,37 +4749,3 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
         if cleared:
             self._update_rule_focus_indicator()
         return cleared
-
-    def _show_applications_summary(self):
-        """Show summary of unique applications with permanent/temporary rule counts"""
-        model = self._get_active_table().model()
-        # Query that groups by operator_data and counts permanent vs temporary
-        query = """
-            SELECT 
-                operator_data as "Target",
-                SUM(CASE WHEN duration = 'always' THEN 1 ELSE 0 END) as "Permanent",
-                SUM(CASE WHEN duration != 'always' THEN 1 ELSE 0 END) as "Temporary",
-                COUNT(*) as "Total"
-            FROM rules
-            WHERE operator_operand IN ('process.path', 'process.command')
-            GROUP BY operator_data
-            ORDER BY Total DESC
-        """
-        self.setQuery(model, query)
-
-    def _show_networks_summary(self):
-        """Show summary of unique network targets with permanent/temporary rule counts"""
-        model = self._get_active_table().model()
-        # Query that groups by operator_data and counts permanent vs temporary for network targets
-        query = """
-            SELECT 
-                operator_data as "Target",
-                SUM(CASE WHEN duration = 'always' THEN 1 ELSE 0 END) as "Permanent",
-                SUM(CASE WHEN duration != 'always' THEN 1 ELSE 0 END) as "Temporary",
-                COUNT(*) as "Total"
-            FROM rules
-            WHERE operator_operand IN ('dest.ip', 'dest.host', 'dest.network')
-            GROUP BY operator_data
-            ORDER BY Total DESC
-        """
-        self.setQuery(model, query)

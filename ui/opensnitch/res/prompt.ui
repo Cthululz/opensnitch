@@ -738,7 +738,7 @@
           </widget>
          </item>
          <item row="6" column="1">
-          <widget class="QLabel" name="userLblCheck">
+          <widget class="QLabel" name="label_6">
            <property name="sizePolicy">
             <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
              <horstretch>0</horstretch>
@@ -765,7 +765,7 @@
           </widget>
          </item>
          <item row="2" column="1">
-          <widget class="QLabel" name="dstIPLblCheck">
+          <widget class="QLabel" name="label_3">
            <property name="sizePolicy">
             <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
              <horstretch>0</horstretch>
@@ -813,7 +813,7 @@
           </widget>
          </item>
          <item row="7" column="1">
-          <widget class="QLabel" name="checksumLblCheck">
+          <widget class="QLabel" name="checksumLabel_2">
            <property name="font">
             <font>
              <pointsize>10</pointsize>
@@ -900,7 +900,7 @@
           </widget>
          </item>
          <item row="5" column="1">
-          <widget class="QLabel" name="dstPortLblCheck">
+          <widget class="QLabel" name="destPortLabel_1">
            <property name="sizePolicy">
             <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
              <horstretch>0</horstretch>

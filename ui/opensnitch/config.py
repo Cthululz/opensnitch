@@ -38,8 +38,7 @@ class Config:
     RULE_TYPE_SIMPLE = "simple"
     RULE_TYPE_REGEXP = "regexp"
     RULE_TYPE_NETWORK = "network"
-    RULE_TYPE_RANGE = "range"
-    RulesTypes = (RULE_TYPE_LIST, RULE_TYPE_LISTS, RULE_TYPE_SIMPLE, RULE_TYPE_REGEXP, RULE_TYPE_NETWORK, RULE_TYPE_RANGE)
+    RulesTypes = (RULE_TYPE_LIST, RULE_TYPE_LISTS, RULE_TYPE_SIMPLE, RULE_TYPE_REGEXP, RULE_TYPE_NETWORK)
 
     DEFAULT_TARGET_PROCESS = 0
     ACTION_DENY_IDX = 0
@@ -113,25 +112,16 @@ class Config:
     DEFAULT_POPUP_ADVANCED_DSTPORT = "global/default_popup_advanced_dstport"
     DEFAULT_POPUP_ADVANCED_UID = "global/default_popup_advanced_uid"
     DEFAULT_POPUP_ADVANCED_CHECKSUM = "global/default_popup_advanced_checksum"
-    # Last used settings (saved after user creates a rule from popup)
-    LAST_USED_DURATION = "popup/last_used_duration"
-    LAST_USED_TARGET = "popup/last_used_target"
-    LAST_USED_ACTION = "popup/last_used_action"
-    LAST_USED_ADVANCED = "popup/last_used_advanced"
-    LAST_USED_DSTIP = "popup/last_used_dstip"
-    LAST_USED_DSTPORT = "popup/last_used_dstport"
-    LAST_USED_UID = "popup/last_used_uid"
-    LAST_USED_CHECKSUM = "popup/last_used_checksum"
+    DEFAULT_POPUP_LAST_ACTION = "global/popup_last_action"
+    DEFAULT_POPUP_LAST_DURATION = "global/popup_last_duration"
+    DEFAULT_POPUP_LAST_TARGET = "global/popup_last_target"
+    DEFAULT_POPUP_LAST_DSTIP = "global/popup_last_dstip"
+    DEFAULT_POPUP_LAST_DSTPORT = "global/popup_last_dstport"
+    DEFAULT_POPUP_LAST_USERID = "global/popup_last_userid"
+    DEFAULT_POPUP_LAST_ADVANCED = "global/popup_last_advanced"
     DEFAULT_SERVER_ADDR  = "global/server_address"
     DEFAULT_SERVER_MAX_MESSAGE_LENGTH  = "global/server_max_message_length"
-    DEFAULT_SERVER_MAX_WORKERS = "global/max_workers"
-    DEFAULT_SERVER_MAX_CLIENTS = "global/max_clients"
-    DEFAULT_SERVER_KEEPALIVE = "global/server_keepalive"
-    DEFAULT_SERVER_KEEPALIVE_TIMEOUT = "global/server_keepalive_timeout"
-    DEFAULT_SERVER_LOG_LEVEL = "global/server_log_level"
-    DEFAULT_SERVER_LOG_FILE = "global/server_log_file"
     DEFAULT_HIDE_SYSTRAY_WARN  = "global/hide_systray_warning"
-
     DEFAULT_DB_TYPE_KEY       = "database/type"
     DEFAULT_DB_FILE_KEY       = "database/file"
     DEFAULT_DB_PURGE_OLDEST   = "database/purge_oldest"
@@ -144,8 +134,6 @@ class Config:
 
     NOTIFICATIONS_ENABLED = "notifications/enabled"
     NOTIFICATIONS_TYPE = "notifications/type"
-    NOTIFICATIONS_MISSED_POPUP_TMPL = "notifications/missed_popup_tmpl"
-    NTF_DEFAULT_MISSED_POPUP_TMPL = "%rule.action% action applied %node.addr%\nCommand line: %conn.process_args%"
     NOTIFICATION_TYPE_SYSTEM = 0
     NOTIFICATION_TYPE_QT = 1
 
@@ -231,8 +219,8 @@ class Config:
         self.settings.setValue(path, value)
         self.settings.sync()
 
-    def getSettings(self, path, default=None):
-        return self.settings.value(path, defaultValue=default)
+    def getSettings(self, path):
+        return self.settings.value(path)
 
     def getBool(self, path, default_value=False):
         return self.settings.value(path, type=bool, defaultValue=default_value)

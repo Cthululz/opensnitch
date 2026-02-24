@@ -22,10 +22,20 @@ class AddressTableModel(GenericTableModel):
         self.setColumnCount(len(self.headerLabels))
         self.lastColumnCount = len(self.headerLabels)
 
-    def lastQuery(self):
-        return self.origQueryStr
+    def setQuery(self, q, db):
+        self.origQueryStr = q
+        self.db = db
 
-    def update_col_count(self):
+        if self.prevQueryStr != self.origQueryStr:
+            self.realQuery = QSqlQuery(q, db)
+
+        self.realQuery.exec()
+        self.realQuery.last()
+
+        queryRows = max(0, self.realQuery.at()+1)
+        self.totalRowCount = queryRows
+        self.setRowCount(self.totalRowCount)
+
         queryColumns = self.realQuery.record().count()
         if self.asndb.is_available() and queryColumns < 3:
             self.reconfigureColumns()
@@ -33,6 +43,9 @@ class AddressTableModel(GenericTableModel):
             # update view's columns
             if queryColumns != self.lastColumnCount:
                 self.setModelColumns(queryColumns)
+
+        self.prevQueryStr = self.origQueryStr
+        self.rowCountChanged.emit()
 
     def fillVisibleRows(self, q, upperBound, force=False):
         super().fillVisibleRows(q, upperBound, force)

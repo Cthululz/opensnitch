@@ -103,13 +103,10 @@ RULES_COMBO_FW = 4
 
 RULES_TYPE_PERMANENT = 0
 RULES_TYPE_TEMPORARY = 1
-RULES_TYPE_SUMMARY = 2  # Summary view (grouped targets with counts)
 
 FILTER_TREE_APPS = 0
 FILTER_TREE_NODES = 3
-FILTER_TREE_NETWORKS = 4  # filter by network targets (dest.ip, dest.host, dest.network)
-FILTER_TREE_APPS_SUMMARY = 5  # Summary of unique applications with counts
-FILTER_TREE_NETWORKS_SUMMARY = 6  # Summary of unique network targets with counts
+FILTER_TREE_NETWORKS = 4  # New: filter by network targets (dest.ip, dest.host, dest.network)
 
 FILTER_TREE_FW_NODE = 0
 FILTER_TREE_FW_TABLE = 1
