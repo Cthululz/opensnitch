@@ -891,6 +891,7 @@ class PreferencesDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
 
             if self._themes.available() and \
                     self._saved_theme != "" and \
+                    self.comboUITheme.currentText() != self._saved_theme and \
                     (self.comboUITheme.currentText() == QC.translate("preferences", "System") or \
                      "dark" in self.comboUITheme.currentText()):
                 self._changes_needs_restart = QC.translate("preferences", "UI theme changed")
