@@ -215,6 +215,7 @@ def save_ui_config(win):
 
         thm_name = section_ui.get_theme_name(win)
         win.themes.save_theme(win.comboUITheme.currentIndex(), thm_name, str(win.spinUIDensity.value()))
+        win.saved_theme = win.comboUITheme.currentData()
 
         qt_platform = win.cfgMgr.getSettings(Config.QT_PLATFORM_PLUGIN)
         if qt_platform != win.comboUIQtPlatform.currentText():
