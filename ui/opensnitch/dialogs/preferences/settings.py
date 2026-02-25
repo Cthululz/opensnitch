@@ -223,8 +223,8 @@ def save_ui_config(win):
         win.cfgMgr.setSettings(Config.QT_AUTO_SCREEN_SCALE_FACTOR, bool(win.checkUIAutoScreen.isChecked()))
         win.cfgMgr.setSettings(Config.QT_SCREEN_SCALE_FACTOR, win.lineUIScreenFactor.text())
 
-        current_theme = win.comboUITheme.currentText()
-        if win.themes.available() and win.saved_theme.endswith(current_theme) is False:
+        current_theme = win.comboUITheme.currentData()
+        if win.themes.available() and win.saved_theme != current_theme:
             win.changes_needs_restart = QC.translate("preferences", "UI theme changed")
 
         # this is a workaround for not display pop-ups.
