@@ -192,7 +192,7 @@ class Config:
     @staticmethod
     def get():
         if Config.__instance == None:
-            Config._instance = Config()
+            Config.__instance = Config()
         return Config.__instance
 
     def __init__(self):
