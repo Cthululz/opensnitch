@@ -98,7 +98,7 @@ def load_ui_settings(win):
 
     win.checkAutostart.setChecked(win._autostart.isEnabled())
 
-    tpl = win.cfgMgr.getSettings(Config.NOTIFICATIONS_MISSED_POPUP_TMPL, Config.NTF_DEFAULT_MISSED_POPUP_TMPL)
+    tpl = win.cfgMgr.getSettings(Config.NOTIFICATIONS_MISSED_POPUP_TMPL) or ""
     win.tplMissedPopup.clear()
     win.tplMissedPopup.setPlainText(tpl)
 

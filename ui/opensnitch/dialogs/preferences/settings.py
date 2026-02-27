@@ -44,6 +44,18 @@ def load(win):
     else:
         win.default_duration = win.cfgMgr.DEFAULT_DURATION_IDX
 
+    durations = win.cfgMgr.get_duration_options()
+    win.lineCustomDurations.setText(", ".join(
+        d for d in durations if d not in (
+            win.cfgMgr.DURATION_ONCE, win.cfgMgr.DURATION_UNTIL_RESTART, win.cfgMgr.DURATION_ALWAYS
+        )
+    ))
+    win.comboUIDuration.blockSignals(True)
+    win.comboUIDuration.clear()
+    for d in durations:
+        win.comboUIDuration.addItem(d)
+    win.comboUIDuration.blockSignals(False)
+    win.default_duration = win.cfgMgr.normalize_duration_index(win.default_duration)
     win.comboUIDuration.setCurrentIndex(win.default_duration)
     win.comboUIDialogPos.setCurrentIndex(win.cfgMgr.getInt(win.cfgMgr.DEFAULT_POPUP_POSITION))
     win.comboUIAction.setCurrentIndex(win.default_action)
@@ -194,7 +206,22 @@ def save_ui_config(win):
 
         win.cfgMgr.setSettings(win.cfgMgr.STATS_REFRESH_INTERVAL, int(win.spinUIRefresh.value()))
         win.cfgMgr.setSettings(win.cfgMgr.DEFAULT_ACTION_KEY, win.comboUIAction.currentIndex())
-        win.cfgMgr.setSettings(win.cfgMgr.DEFAULT_DURATION_KEY, int(win.comboUIDuration.currentIndex()))
+
+        current_duration_text = win.comboUIDuration.currentText()
+        raw = win.lineCustomDurations.text()
+        custom_durs = [d.strip() for d in raw.split(",") if d.strip()]
+        win.cfgMgr.setSettings(Config.CUSTOM_DURATIONS_KEY, json.dumps(custom_durs))
+        durations = win.cfgMgr.get_duration_options()
+        win.comboUIDuration.blockSignals(True)
+        win.comboUIDuration.clear()
+        for d in durations:
+            win.comboUIDuration.addItem(d)
+        new_idx = win.comboUIDuration.findText(current_duration_text)
+        win.comboUIDuration.setCurrentIndex(new_idx if new_idx >= 0 else 0)
+        win.comboUIDuration.blockSignals(False)
+
+        cur_duration_idx = win.cfgMgr.normalize_duration_index(win.comboUIDuration.currentIndex())
+        win.cfgMgr.setSettings(win.cfgMgr.DEFAULT_DURATION_KEY, cur_duration_idx)
         win.cfgMgr.setSettings(win.cfgMgr.DEFAULT_TARGET_KEY, win.comboUITarget.currentIndex())
         win.cfgMgr.setSettings(win.cfgMgr.DEFAULT_TIMEOUT_KEY, win.spinUITimeout.value())
         win.cfgMgr.setSettings(win.cfgMgr.DEFAULT_DISABLE_POPUPS, bool(win.popupsCheck.isChecked()))

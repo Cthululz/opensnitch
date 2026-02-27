@@ -7,7 +7,8 @@ from opensnitch.rules import DefaultRulesPath
 def load(win):
     win.node_list = win.nodes.get()
     for addr in win.node_list:
-        hostname = win.nodes.get_node_hostname(addr)
+        node = win.nodes.get_node(addr)
+        hostname = node['data'].name if node and 'data' in node else ""
         win.comboNodes.addItem(f"{addr} - {hostname}", addr)
 
     if len(win.node_list) == 0:
