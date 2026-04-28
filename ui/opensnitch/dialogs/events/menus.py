@@ -62,7 +62,15 @@ class MenusManager(views.ViewsManager):
 
         menu = QtWidgets.QMenu(self)
 
+        if cur_idx == constants.TAB_RULES and self.fwTable.isVisible():
+            cur_idx = constants.TAB_FIREWALL
+            # TODO: handle properly the hidden columns, for example when the
+            # user selects a fw chain that displays the up/down buttons column.
+            return
+        if cur_idx == constants.TAB_RULES and self.alertsTable.isVisible():
+            cur_idx = constants.TAB_ALERTS
         tbl_name = self.TABLES[cur_idx]['name']
+
         headers = model.headers()
         headers_sel = []
         cols = self.cfg.getSettings(Config.STATS_SHOW_COLUMNS + f"_{tbl_name}")
@@ -71,14 +79,19 @@ class MenusManager(views.ViewsManager):
         cols_len = len(cols)
         for i, h in enumerate(headers):
             haction = menu.addAction(h)
-            haction.setCheckable(True)
-            haction.setChecked(str(i) in cols or cols_len == 0)
+            if h == "":
+                haction.setVisible(False)
+            else:
+                haction.setCheckable(True)
+                haction.setChecked(str(i) in cols or cols_len == 0)
             headers_sel.append(haction)
 
         point = QtCore.QPoint(pos.x()+10, pos.y()+5)
         action = menu.exec(table.mapToGlobal(point))
         new_cols = []
         for i, h in enumerate(headers_sel):
+            if not h.isVisible():
+                continue
             if h == action:
                 self.TABLES[cur_idx]['view'].setColumnHidden(i, not h.isChecked())
             if h.isChecked():
@@ -257,7 +270,7 @@ class MenusManager(views.ViewsManager):
                 menu.addMenu(nodesMenu)
 
             _actAllow = actionMenu.addAction(QC.translate("stats", "Allow"))
-            _actDeny = actionMenu.addAction(QC.translate("stats", "Deny"))
+            _actDrop = actionMenu.addAction(QC.translate("stats", "Drop"))
             _actReject = actionMenu.addAction(QC.translate("stats", "Reject"))
             menu.addMenu(actionMenu)
 
@@ -339,7 +352,8 @@ class MenusManager(views.ViewsManager):
                 self.table_menu_change_rule_field(cur_idx, model, selection, "duration", Config.DURATION_UNTIL_RESTART)
             elif action == _actAllow:
                 self.table_menu_change_rule_field(cur_idx, model, selection, "action", Config.ACTION_ALLOW)
-            elif action == _actDeny:
+            elif action == _actDrop:
+                # TODO: use ACTION_DROP when 'drop' is added to the daemon
                 self.table_menu_change_rule_field(cur_idx, model, selection, "action", Config.ACTION_DENY)
             elif action == _actReject:
                 self.table_menu_change_rule_field(cur_idx, model, selection, "action", Config.ACTION_REJECT)

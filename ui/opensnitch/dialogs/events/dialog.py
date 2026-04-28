@@ -706,7 +706,7 @@ class StatsDialog(menus.MenusManager, menu_actions.MenuActions, views.ViewsManag
         else:
             qstr = qstr + self.get_view_limit()
 
-        self.queries.setQuery(model, qstr)
+        self.queries.setQuery(model, qstr, limit=self.get_query_limit())
 
     def _cb_combo_action_changed(self, idx):
         if self.get_current_view_idx() != constants.TAB_MAIN:
@@ -1002,13 +1002,17 @@ class StatsDialog(menus.MenusManager, menu_actions.MenuActions, views.ViewsManag
             self.startButton.setIcon(self.iconStart)
             return
 
-        self.update_interception_status(self.startButton.isChecked())
-        self._status_changed_trigger.emit(self.startButton.isChecked())
+        checked = self.startButton.isChecked()
+        if Config.get().getBool(Config.DEFAULT_PERSIST_INTERCEPTION_STATE, False):
+            Config.get().setSettings(Config.DEFAULT_FW_INTERCEPTION_ENABLED, checked)
 
-        if self.startButton.isChecked():
-            nid, noti = self.start_interception(self._notification_callback)
+        self.update_interception_status(checked)
+        self._status_changed_trigger.emit(checked)
+
+        if checked:
+            nid, noti = self.node_start_interception(callback=self._notification_callback)
         else:
-            nid, noti = self.stop_interception(self._notification_callback)
+            nid, noti = self.node_stop_interception(callback=self._notification_callback)
 
         self.save_ntf(nid, noti)
 
@@ -1148,8 +1152,8 @@ class StatsDialog(menus.MenusManager, menu_actions.MenuActions, views.ViewsManag
         elif cur_idx ==  constants.TAB_USERS:
             field = "uid"
 
-        ret1 = self._db.remove("DELETE FROM {0} WHERE what = '{1}'".format(table, value))
-        ret2 = self._db.remove("DELETE FROM connections WHERE {0} = '{1}'".format(field, value))
+        ret1 = self._db.remove("DELETE FROM {0} WHERE what = ?".format(table), [value])
+        ret2 = self._db.remove("DELETE FROM connections WHERE {0} = ?".format(field), [value])
 
         return ret1 and ret2
 
@@ -1336,7 +1340,6 @@ class StatsDialog(menus.MenusManager, menu_actions.MenuActions, views.ViewsManag
             # do not update any tab if the window is not visible
             if self.isVisible() and self.isMinimized() is False and self.needs_refresh():
                 self._trigger.emit(is_local, need_query_update)
-                self._last_update = datetime.datetime.now()
 
     @QtCore.pyqtSlot(bool, bool)
     def _on_update_triggered(self, is_local, need_query_update=False):
@@ -1359,6 +1362,7 @@ class StatsDialog(menus.MenusManager, menu_actions.MenuActions, views.ViewsManag
 
         if need_query_update and not self.are_rows_selected():
             self.refresh_active_table()
+            self._last_update = datetime.datetime.now()
 
     # prevent a click on the window's x
     # from quitting the whole application

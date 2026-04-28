@@ -27,7 +27,7 @@ class Database:
 
     @staticmethod
     def instance():
-        if Database.__instance == None:
+        if Database.__instance is None:
             Database.__instance = Database()
         return Database.__instance
 
@@ -396,7 +396,7 @@ class Database:
         try:
             oldt = self.get_oldest_record()
             newt = self.get_newest_record()
-            if oldt == None or newt == None or oldt == 0 or newt == 0:
+            if oldt is None or newt is None or oldt == 0 or newt == 0:
                 return -1
 
             oldest = datetime.strptime(oldt, "%Y-%m-%d %H:%M:%S.%f")
@@ -424,7 +424,7 @@ class Database:
 
         return None
 
-    def remove(self, qstr):
+    def remove(self, qstr, args=None):
         try:
             q = QSqlQuery(qstr, self.db)
             if q.exec():
@@ -459,7 +459,7 @@ class Database:
         return False
 
     def insert(self, table, fields, columns, update_field=None, update_values=None, action_on_conflict="REPLACE"):
-        if update_field != None:
+        if update_field is not None:
             action_on_conflict = ""
         else:
             action_on_conflict = "OR " + action_on_conflict
@@ -470,7 +470,7 @@ class Database:
             qstr += "?,"
         qstr = qstr[0:len(qstr)-1] + ")"
 
-        if update_field != None:
+        if update_field is not None:
             # NOTE: UPSERTS on sqlite are only supported from v3.24 on.
             # On Ubuntu16.04/18 for example (v3.11/3.22) updating a record on conflict
             # fails with "Parameter count error"
@@ -484,7 +484,7 @@ class Database:
 
     def update(self, table, fields, values, condition=None, action_on_conflict="OR IGNORE"):
         qstr = "UPDATE " + action_on_conflict + " " + table + " SET " + fields
-        if condition != None:
+        if condition is not None:
             qstr += " WHERE " + condition
         try:
             with self._lock:
@@ -525,7 +525,7 @@ class Database:
 
     def insert_batch(self, table, db_fields, db_columns, fields, values, update_field=None, update_value=None, action_on_conflict="REPLACE"):
         action = "OR " + action_on_conflict
-        if update_field != None:
+        if update_field is not None:
             action = ""
 
         qstr = "INSERT " + action + " INTO " + table + " (" + db_fields[0] + "," + db_fields[1] + ") VALUES("
@@ -569,14 +569,14 @@ class Database:
 
     def delete_rule(self, name, node_addr):
         qstr = "DELETE FROM rules WHERE name=?"
-        if node_addr != None:
+        if node_addr is not None:
             qstr = qstr + " AND node=?"
 
         with self._lock:
             q = QSqlQuery(qstr, self.db)
             q.prepare(qstr)
             q.addBindValue(name)
-            if node_addr != None:
+            if node_addr is not None:
                 q.addBindValue(node_addr)
             if not q.exec():
                 print("db, delete_rule() ERROR: ", qstr)
@@ -641,13 +641,13 @@ class Database:
         get rule records, given the name of the rule and the node
         """
         qstr = "SELECT * FROM rules WHERE name=?"
-        if node_addr != None:
+        if node_addr is not None:
             qstr = qstr + " AND node=?"
 
         q = QSqlQuery(qstr, self.db)
         q.prepare(qstr)
         q.addBindValue(rule_name)
-        if node_addr != None:
+        if node_addr is not None:
             q.addBindValue(node_addr)
         q.exec()
 
@@ -659,12 +659,12 @@ class Database:
         """
         qstr = "SELECT * FROM rules WHERE {0} LIKE ?".format(field)
         q = QSqlQuery(qstr, self.db)
-        if node_addr != None:
+        if node_addr is not None:
             qstr = qstr + " AND node=?".format(node_addr)
 
         q.prepare(qstr)
         q.addBindValue("%" + value + "%")
-        if node_addr != None:
+        if node_addr is not None:
             q.addBindValue(node_addr)
         if not q.exec():
             print("get_rule_by_field() error:", q.lastError().driverText())
@@ -722,14 +722,14 @@ class Database:
 
     def delete_alert(self, time, node_addr=None):
         qstr = "DELETE FROM alerts WHERE time=?"
-        if node_addr != None:
+        if node_addr is not None:
             qstr = qstr + " AND node=?"
 
         with self._lock:
             q = QSqlQuery(qstr, self.db)
             q.prepare(qstr)
             q.addBindValue(time)
-            if node_addr != None:
+            if node_addr is not None:
                 q.addBindValue(node_addr)
             if not q.exec():
                 print("db, delete_alert() ERROR: ", qstr)
@@ -743,13 +743,13 @@ class Database:
         get alert, given the time of the alert and the node
         """
         qstr = "SELECT * FROM alerts WHERE time=?"
-        if node_addr != None:
+        if node_addr is not None:
             qstr = qstr + " AND node=?"
 
         q = QSqlQuery(qstr, self.db)
         q.prepare(qstr)
         q.addBindValue(alert_time)
-        if node_addr != None:
+        if node_addr is not None:
             q.addBindValue(node_addr)
         q.exec()
 

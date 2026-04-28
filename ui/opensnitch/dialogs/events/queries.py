@@ -374,6 +374,7 @@ class Queries:
         section = constants.FILTER_TREE_APPS
         filter_text = self.win.get_search_text()
 
+        model = self.win.get_active_table().model()
         if parent_row == constants.NO_PARENT:
 
             if item_row == constants.RULES_TREE_NODES:
@@ -382,14 +383,13 @@ class Queries:
             elif item_row == constants.RULES_TREE_ALERTS:
                 section=constants.FILTER_TREE_NODES
                 what=""
-                model = self.win.get_active_table().model()
                 alerts_query = "SELECT {0} FROM {1} {2} {3}".format(
                     self.win.TABLES[constants.TAB_ALERTS]['display_fields'],
                     self.win.TABLES[constants.TAB_ALERTS]['name'],
                     self.win.get_view_order(),
                     self.win.get_view_limit()
                 )
-                self.setQuery(model, alerts_query)
+                self.setQuery(model, alerts_query, limit=self.win.get_query_limit(), offset=0)
                 return
             elif item_row == constants.RULES_TREE_FIREWALL:
                 self.set_fw_rules_filter(parent_row, item_row, what, what1, what2)
@@ -449,14 +449,13 @@ class Queries:
             else:
                 what = what + " AND"
             what = what + f" r.name LIKE '%{filter_text}%'"
-        model = self.win.get_active_table().model()
-        self.setQuery(model, "SELECT {0} FROM rules as r {1} {2} {3}".format(
+        q = "SELECT {0} FROM rules as r {1} {2} {3}".format(
             self.win.TABLES[constants.TAB_RULES]['display_fields'],
             what,
             self.win.get_view_order(),
             self.win.get_view_limit()
-        ))
-
+        )
+        self.setQuery(model, q, limit=self.win.get_query_limit(), offset=0)
 
     def set_fw_rules_filter(self, parent_row=constants.NO_PARENT, item_row=0, what="", what1="", what2=""):
         section = constants.FILTER_TREE_APPS
@@ -494,6 +493,8 @@ class Queries:
         # TODO: add a parameter to every filter*() method, to accept text filters.
         if filter_text != "":
             self.win.TABLES[constants.TAB_FIREWALL]['view'].filterByQuery(filter_text)
+        # TODO: allow users configure the columns to display
+        #self.win.show_view_columns(constants.TAB_FIREWALL)
 
     def set_events_query(self, advanced_filter=None):
         if self.win.get_current_view_idx() != constants.TAB_MAIN:
@@ -510,6 +511,7 @@ class Queries:
         if self.win.comboAction.currentIndex() == 1:
             action = f"action = \"{Config.ACTION_ALLOW}\""
         elif self.win.comboAction.currentIndex() == 2:
+            # TODO: use ACTION_DROP when 'drop' is added to the daemon
             action = f"action = \"{Config.ACTION_DENY}\""
         elif self.win.comboAction.currentIndex() == 3:
             action = f"action = \"{Config.ACTION_REJECT}\""
@@ -526,7 +528,7 @@ class Queries:
             qstr += self.get_events_generic_filter(action, filter_text)
 
         qstr += self.win.get_view_order() + self.win.get_view_limit()
-        self.setQuery(model, qstr)
+        self.setQuery(model, qstr, limit=self.win.get_query_limit())
 
     def set_nodes_query(self, data):
         model = self.win.get_active_table().model()
@@ -535,7 +537,7 @@ class Queries:
             self.win.COL_STR_PROCESS,
             self.win.get_view_order() + self.win.get_view_limit()
         )
-        self.setQuery(model, f"{query} {qtail}")
+        self.setQuery(model, f"{query} {qtail}", limit=self.win.get_query_limit(), offset=0)
 
     def set_rules_query(self, rule_name="", node=""):
         if node != "":
@@ -552,9 +554,12 @@ class Queries:
         )
         self.setQuery(
             model,
-            "{0} {1}".format(self.win.TABLES[constants.TAB_RULES]['query'],
-            qtail
-        ))
+            "{0} {1}".format(
+                self.win.TABLES[constants.TAB_RULES]['query'],
+                qtail
+            ),
+            limit=self.win.get_query_limit()
+        )
 
     def set_hosts_query(self, data):
         model = self.win.get_active_table().model()
@@ -563,7 +568,7 @@ class Queries:
             self.win.COL_STR_PROCESS,
             self.win.get_view_order(constants.SORT_DESC) + self.win.get_view_limit()
         )
-        self.setQuery(model, f"{query} {qtail}")
+        self.setQuery(model, f"{query} {qtail}", limit=self.win.get_query_limit(), offset=0)
 
     def set_process_query(self, data):
         model = self.win.get_active_table().model()
@@ -571,7 +576,7 @@ class Queries:
         qtail = "GROUP BY c.src_ip, c.dst_ip, c.dst_host, c.dst_port, c.uid, c.action, c.node, c.pid, c.process_args {0}".format(
             self.win.get_view_order(constants.SORT_DESC) + self.win.get_view_limit()
         )
-        self.setQuery(model, f"{query} {qtail}")
+        self.setQuery(model, f"{query} {qtail}", limit=self.win.get_query_limit(), offset=0)
 
         return self.win.get_active_table().model().rowCount()
 
@@ -583,7 +588,7 @@ class Queries:
             self.win.COL_STR_DST_HOST,
             self.win.get_view_order(constants.SORT_DESC) + self.win.get_view_limit()
         )
-        self.setQuery(model, f"{query} {qtail}")
+        self.setQuery(model, f"{query} {qtail}", limit=self.win.get_query_limit(), offset=0)
 
     def set_ports_query(self, data):
         model = self.win.get_active_table().model()
@@ -594,7 +599,7 @@ class Queries:
             self.win.get_view_order(constants.SORT_DESC) + self.win.get_view_limit()
         )
         #self.setQuery(model, f"{query} {qtail}", ((0, data),))
-        self.setQuery(model, f"{query} {qtail}")
+        self.setQuery(model, f"{query} {qtail}", limit=self.win.get_query_limit(), offset=0)
 
     def set_users_query(self, data):
         uid = data.split(" ")
@@ -608,15 +613,21 @@ class Queries:
             self.win.COL_STR_PROCESS,
             self.win.get_view_order(constants.SORT_DESC) + self.win.get_view_limit()
         )
-        self.setQuery(model, f"{query} {qtail}")
+        self.setQuery(model, f"{query} {qtail}", limit=self.win.get_query_limit(), offset=0)
 
-    def setQuery(self, model, q, binds=None):
+    def setQuery(self, model, q, binds=None, limit=0, offset=None):
         if self.win.is_context_menu_active() or self.win.is_scrollbar_active():
             return
         with self.win._lock:
             try:
                 model.query().clear()
-                model.setQuery(q, self.win._db_sqlite, binds)
+                model.setQuery(
+                    q,
+                    self.win._db_sqlite,
+                    binds,
+                    limit=limit,
+                    offset=offset
+                )
                 if model.lastError().isValid():
                     print("setQuery() error: ", model.lastError().text())
 

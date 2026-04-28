@@ -344,6 +344,7 @@ class RulesEditorDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
         self.enableCheck.setChecked(rule.enabled)
         self.precedenceCheck.setChecked(rule.precedence)
         self.nologCheck.setChecked(rule.nolog)
+        # TODO: use ACTION_DROP when 'drop' is added to the daemon
         if rule.action == Config.ACTION_DENY:
             self.actionDenyRadio.setChecked(True)
         elif rule.action == Config.ACTION_ALLOW:
@@ -420,6 +421,7 @@ class RulesEditorDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
         self.rule.precedence = self.precedenceCheck.isChecked()
         self.rule.nolog = self.nologCheck.isChecked()
         self.rule.operator.type = Config.RULE_TYPE_SIMPLE
+        # TODO: use ACTION_DROP when 'drop' is added to the daemon
         self.rule.action = Config.ACTION_DENY
         if self.actionAllowRadio.isChecked():
             self.rule.action = Config.ACTION_ALLOW
@@ -892,5 +894,13 @@ class RulesEditorDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
 
         if self.ruleNameEdit.text() == "":
             self.rule.name = slugify("%s %s %s" % (self.rule.action, self.rule.operator.type, self.rule.operator.data))
+        elif self._old_rule_name is not None:
+            # If the rule name was auto-generated (starts with an action prefix),
+            # and the action has changed, update the prefix to match the new action.
+            for old_action in (Config.ACTION_ALLOW, Config.ACTION_DENY, Config.ACTION_REJECT):
+                if self._old_rule_name.startswith(old_action + "-") and old_action != self.rule.action:
+                    self.rule.name = self.rule.action + self._old_rule_name[len(old_action):]
+                    self.ruleNameEdit.setText(self.rule.name)
+                    break
 
         return True, ""

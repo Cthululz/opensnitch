@@ -71,6 +71,8 @@ class FirewallTableModel(QStandardItemModel):
         self._fw = Firewall.instance()
         self.lastColumnCount = len(self.headersAll)
         self.lastQueryArgs = ()
+        self._sort_column = None
+        self._sort_order = None
 
         QStandardItemModel.__init__(self, 0, self.lastColumnCount)
         self.setHorizontalHeaderLabels(self.headersAll)
@@ -130,6 +132,11 @@ class FirewallTableModel(QStandardItemModel):
             row.row(),
             row.row()+action)
 
+    def sort(self, column, order=QtCore.Qt.SortOrder.AscendingOrder):
+         super().sort(column, order)
+         self._sort_column = column
+         self._sort_order = order
+
     def refresh(self, force=False):
         self.fillVisibleRows(0, force, *self.lastQueryArgs)
 
@@ -161,7 +168,7 @@ class FirewallTableModel(QStandardItemModel):
     def query(self):
         return QSqlQuery()
 
-    def setQuery(self, q, db, args=None):
+    def setQuery(self, q, db, args=None, limit=0, offset=0):
         self.refresh()
 
     def nextRecord(self, offset):
@@ -200,12 +207,15 @@ class FirewallTableModel(QStandardItemModel):
         self.addRows(rules)
 
         self.blockSignals(False)
-        if self.lastRules != rules or force == True:
+        if self.lastRules != rules or force is True:
             self.layoutChanged.emit()
             self.totalRowCount = len(rules)
             self.setRowCount(self.totalRowCount)
             self.rowsUpdated.emit(self.activeFilter, data)
             self.dataChanged.emit(self.createIndex(0,0), self.createIndex(self.rowCount(), self.columnCount()))
+
+        if self._sort_column is not None:
+            super().sort(self._sort_column, self._sort_order)
 
         self.lastRules = rules
         self.lastQueryArgs = data
@@ -331,7 +341,6 @@ class FirewallTableView(QTableView):
 
     def setModel(self, model):
         super().setModel(model)
-        self.horizontalHeader().sortIndicatorChanged.disconnect()
         self.setSortingEnabled(True)
         self.model().columnCountChanged.connect(self._cb_column_count_changed)
         model.rowsUpdated.connect(self._cb_rows_updated)
