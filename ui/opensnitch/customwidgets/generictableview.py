@@ -213,12 +213,22 @@ class GenericTableModel(QStandardItemModel):
 
         self.blockSignals(False);
 
-    def setQuery(self, q, db):
+    def setQuery(self, q, db, binds=None, limit=None, offset=None):
         self.origQueryStr = q
         self.db = db
 
+        if offset is not None:
+            self.queryOffset = offset
+        if limit is not None:
+            self.queryLimit = limit
+
         if self.prevQueryStr != self.origQueryStr:
             self.realQuery = QSqlQuery(q, db)
+
+        if binds is not None:
+            self.realQuery.prepare(q)
+            for idx, v in binds:
+                self.realQuery.bindValue(idx, v)
 
         self.realQuery.exec()
         self.realQuery.last()
@@ -650,6 +660,7 @@ class GenericTableView(QTableView):
             self._rows_selection = {}
         self._rows_selection[curIdx.data()] = self.getRowCells(curIdx.row())
 
+        viewport_row = curIdx.row()
         offset = self.model().queryOffset
         limit = self.model().queryLimit
         if curIdx.row() == 0:
