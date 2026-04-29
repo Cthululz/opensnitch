@@ -563,12 +563,23 @@ class PromptDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
         utils.add_dst_networks_to_combo(self.whatIPCombo, con.dst_ip)
 
         # Load last used settings if available, otherwise use defaults
-        if self._cfg.hasKey(self._cfg.LAST_USED_ACTION):
+        # Try context-aware settings first, then fall back to global LAST_USED_*
+        context_keys = utils.build_context_keys(con)
+
+        # Action
+        ctx_action = self._cfg.get_context_setting(Config.CONTEXT_FIELD_ACTION, context_keys)
+        if ctx_action is not None:
+            self._default_action = int(ctx_action)
+        elif self._cfg.hasKey(self._cfg.LAST_USED_ACTION):
             self._default_action = self._cfg.getInt(self._cfg.LAST_USED_ACTION)
         else:
             self._default_action = self._cfg.getInt(self._cfg.DEFAULT_ACTION_KEY)
 
-        if self._cfg.hasKey(self._cfg.LAST_USED_DURATION):
+        # Duration
+        ctx_duration = self._cfg.get_context_setting(Config.CONTEXT_FIELD_DURATION, context_keys)
+        if ctx_duration is not None:
+            self.durationCombo.setCurrentIndex(int(ctx_duration))
+        elif self._cfg.hasKey(self._cfg.LAST_USED_DURATION):
             self.durationCombo.setCurrentIndex(self._cfg.getInt(self._cfg.LAST_USED_DURATION))
         else:
             utils.set_default_duration(self._cfg, self.durationCombo)
@@ -576,27 +587,43 @@ class PromptDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
         utils.set_default_target(self.whatCombo, con, self._cfg, app_name, app_args)
 
         # Load last used advanced settings if available
-        if self._cfg.hasKey(self._cfg.LAST_USED_DSTIP):
+        ctx_dstip = self._cfg.get_context_setting(Config.CONTEXT_FIELD_DSTIP, context_keys)
+        if ctx_dstip is not None:
+            self.checkDstIP.setChecked(bool(ctx_dstip))
+        elif self._cfg.hasKey(self._cfg.LAST_USED_DSTIP):
             self.checkDstIP.setChecked(self._cfg.getBool(self._cfg.LAST_USED_DSTIP))
         else:
             self.checkDstIP.setChecked(self._cfg.getBool(self._cfg.DEFAULT_POPUP_ADVANCED_DSTIP))
 
-        if self._cfg.hasKey(self._cfg.LAST_USED_DSTPORT):
+        ctx_dstport = self._cfg.get_context_setting(Config.CONTEXT_FIELD_DSTPORT, context_keys)
+        if ctx_dstport is not None:
+            self.checkDstPort.setChecked(bool(ctx_dstport))
+        elif self._cfg.hasKey(self._cfg.LAST_USED_DSTPORT):
             self.checkDstPort.setChecked(self._cfg.getBool(self._cfg.LAST_USED_DSTPORT))
         else:
             self.checkDstPort.setChecked(self._cfg.getBool(self._cfg.DEFAULT_POPUP_ADVANCED_DSTPORT))
 
-        if self._cfg.hasKey(self._cfg.LAST_USED_UID):
+        ctx_uid = self._cfg.get_context_setting(Config.CONTEXT_FIELD_UID, context_keys)
+        if ctx_uid is not None:
+            self.checkUserID.setChecked(bool(ctx_uid))
+        elif self._cfg.hasKey(self._cfg.LAST_USED_UID):
             self.checkUserID.setChecked(self._cfg.getBool(self._cfg.LAST_USED_UID))
         else:
             self.checkUserID.setChecked(self._cfg.getBool(self._cfg.DEFAULT_POPUP_ADVANCED_UID))
 
-        if self._cfg.hasKey(self._cfg.LAST_USED_CHECKSUM):
+        ctx_checksum = self._cfg.get_context_setting(Config.CONTEXT_FIELD_CHECKSUM, context_keys)
+        if ctx_checksum is not None:
+            self.checkSum.setChecked(bool(ctx_checksum))
+        elif self._cfg.hasKey(self._cfg.LAST_USED_CHECKSUM):
             self.checkSum.setChecked(self._cfg.getBool(self._cfg.LAST_USED_CHECKSUM))
         else:
             self.checkSum.setChecked(self._cfg.getBool(self._cfg.DEFAULT_POPUP_ADVANCED_CHECKSUM))
 
-        if self._cfg.hasKey(self._cfg.LAST_USED_ADVANCED):
+        ctx_advanced = self._cfg.get_context_setting(Config.CONTEXT_FIELD_ADVANCED, context_keys)
+        if ctx_advanced is not None:
+            if bool(ctx_advanced):
+                self.checkAdvanced.toggle()
+        elif self._cfg.hasKey(self._cfg.LAST_USED_ADVANCED):
             if self._cfg.getBool(self._cfg.LAST_USED_ADVANCED):
                 self.checkAdvanced.toggle()
         elif self._cfg.getBool(self._cfg.DEFAULT_POPUP_ADVANCED):
@@ -741,7 +768,7 @@ class PromptDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
             if not exists:
                 self._rule.name = self._rules.new_unique_name(rule_temp_name, self._peer, "")
 
-            # Save last used settings
+            # Save last used settings (global + context-aware)
             self._cfg.setSettings(self._cfg.LAST_USED_ACTION, self._default_action)
             self._cfg.setSettings(self._cfg.LAST_USED_DURATION, self.durationCombo.currentIndex())
             self._cfg.setSettings(self._cfg.LAST_USED_TARGET, self.whatCombo.currentIndex())
@@ -750,6 +777,17 @@ class PromptDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
             self._cfg.setSettings(self._cfg.LAST_USED_DSTPORT, self.checkDstPort.isChecked())
             self._cfg.setSettings(self._cfg.LAST_USED_UID, self.checkUserID.isChecked())
             self._cfg.setSettings(self._cfg.LAST_USED_CHECKSUM, self.checkSum.isChecked())
+
+            # Save context-aware settings
+            ctx_keys = utils.build_context_keys(self._con)
+            if ctx_keys:
+                self._cfg.set_context_setting(Config.CONTEXT_FIELD_ACTION, self._default_action, ctx_keys)
+                self._cfg.set_context_setting(Config.CONTEXT_FIELD_DURATION, self.durationCombo.currentIndex(), ctx_keys)
+                self._cfg.set_context_setting(Config.CONTEXT_FIELD_ADVANCED, self._ischeckAdvanceded, ctx_keys)
+                self._cfg.set_context_setting(Config.CONTEXT_FIELD_DSTIP, self.checkDstIP.isChecked(), ctx_keys)
+                self._cfg.set_context_setting(Config.CONTEXT_FIELD_DSTPORT, self.checkDstPort.isChecked(), ctx_keys)
+                self._cfg.set_context_setting(Config.CONTEXT_FIELD_UID, self.checkUserID.isChecked(), ctx_keys)
+                self._cfg.set_context_setting(Config.CONTEXT_FIELD_CHECKSUM, self.checkSum.isChecked(), ctx_keys)
 
             self.hide()
             if self._ischeckAdvanceded:

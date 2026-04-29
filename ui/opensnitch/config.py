@@ -112,6 +112,7 @@ class Config:
     DEFAULT_POPUP_ADVANCED_DSTPORT = "global/default_popup_advanced_dstport"
     DEFAULT_POPUP_ADVANCED_UID = "global/default_popup_advanced_uid"
     DEFAULT_POPUP_ADVANCED_CHECKSUM = "global/default_popup_advanced_checksum"
+    # Global last-used popup settings (backward compatibility)
     DEFAULT_POPUP_LAST_ACTION = "global/popup_last_action"
     DEFAULT_POPUP_LAST_DURATION = "global/popup_last_duration"
     DEFAULT_POPUP_LAST_TARGET = "global/popup_last_target"
@@ -119,6 +120,31 @@ class Config:
     DEFAULT_POPUP_LAST_DSTPORT = "global/popup_last_dstport"
     DEFAULT_POPUP_LAST_USERID = "global/popup_last_userid"
     DEFAULT_POPUP_LAST_ADVANCED = "global/popup_last_advanced"
+
+    # Context-aware popup settings (keyed by process/command/host)
+    CONTEXT_AWARE_ENABLED = "global/context_aware_enabled"
+    CONTEXT_MAX_KEYS = "global/context_max_keys"
+    CONTEXT_EXPIRY_DAYS = "global/context_expiry_days"
+    CONTEXT_KEY_PREFIX = "global/popup_ctx/"
+
+    # Fields stored per context
+    CONTEXT_FIELD_ACTION = "action"
+    CONTEXT_FIELD_DURATION = "duration"
+    CONTEXT_FIELD_TARGET = "target"
+    CONTEXT_FIELD_ADVANCED = "advanced"
+    CONTEXT_FIELD_DSTIP = "dstip"
+    CONTEXT_FIELD_DSTPORT = "dstport"
+    CONTEXT_FIELD_UID = "uid"
+    CONTEXT_FIELD_CHECKSUM = "checksum"
+    CONTEXT_FIELDS = [
+        CONTEXT_FIELD_ACTION, CONTEXT_FIELD_DURATION, CONTEXT_FIELD_TARGET,
+        CONTEXT_FIELD_ADVANCED, CONTEXT_FIELD_DSTIP, CONTEXT_FIELD_DSTPORT,
+        CONTEXT_FIELD_UID, CONTEXT_FIELD_CHECKSUM
+    ]
+
+    # Defaults
+    DEFAULT_CONTEXT_MAX_KEYS = 100
+    DEFAULT_CONTEXT_EXPIRY_DAYS = 30
     DEFAULT_SERVER_ADDR  = "global/server_address"
     NOTIFICATIONS_MISSED_POPUP_TMPL = "notifications/missed_popup_tmpl"
     DEFAULT_SERVER_LOG_FILE = "global/server_log_file"
@@ -340,3 +366,138 @@ class Config:
         print("                  Bytes:", maxmsglen)
 
         return maxmsglen
+
+    # ---- Context-aware popup settings ----
+
+    def context_aware_enabled(self):
+        """Check if context-aware defaults are enabled."""
+        return self.getBool(Config.CONTEXT_AWARE_ENABLED, default_value=True)
+
+    def get_max_context_keys(self):
+        """Get maximum number of context keys to store."""
+        return self.getInt(Config.CONTEXT_MAX_KEYS, self.DEFAULT_CONTEXT_MAX_KEYS)
+
+    def get_context_expiry_days(self):
+        """Get number of days before context keys expire."""
+        return self.getInt(Config.CONTEXT_EXPIRY_DAYS, self.DEFAULT_CONTEXT_EXPIRY_DAYS)
+
+    def _context_key(self, context_id, field):
+        """Build a full context setting key."""
+        return f"{Config.CONTEXT_KEY_PREFIX}{context_id}/{field}"
+
+    def get_context_setting(self, field, context_keys):
+        """
+        Look up a setting value, walking through context keys from most
+        specific to least specific. Falls back to global LAST_USED_* keys.
+
+        Args:
+            field: One of Config.CONTEXT_FIELD_* constants
+            context_keys: List of context identifiers (most specific first)
+
+        Returns:
+            The setting value, or None if not found
+        """
+        if not self.context_aware_enabled():
+            return None
+
+        # Walk context keys from most specific to least specific
+        for ctx_id in context_keys:
+            key = self._context_key(ctx_id, field)
+            if self.hasKey(key):
+                # Update last accessed timestamp
+                self.setSettings(key + "/_last_access", self._now_timestamp())
+                return self.getSettings(key)
+
+        return None
+
+    def set_context_setting(self, field, value, context_keys):
+        """
+        Save a setting value to the most specific context key.
+
+        Args:
+            field: One of Config.CONTEXT_FIELD_* constants
+            value: The value to save
+            context_keys: List of context identifiers (most specific first)
+        """
+        if not self.context_aware_enabled() or not context_keys:
+            return
+
+        # Save to the most specific context
+        ctx_id = context_keys[0]
+        key = self._context_key(ctx_id, field)
+        self.setSettings(key, value)
+        self.setSettings(key + "/_last_access", self._now_timestamp())
+
+        # Also save to less specific contexts for fallback
+        for fallback_ctx in context_keys[1:]:
+            fallback_key = self._context_key(fallback_ctx, field)
+            if not self.hasKey(fallback_key):
+                self.setSettings(fallback_key, value)
+                self.setSettings(fallback_key + "/_last_access", self._now_timestamp())
+
+    def clear_context_settings(self):
+        """Clear all context-aware settings."""
+        prefix = Config.CONTEXT_KEY_PREFIX
+        all_keys = self.settings.allKeys()
+        for key in all_keys:
+            if key.startswith(prefix):
+                self.settings.remove(key)
+        self.settings.sync()
+
+    def cleanup_old_contexts(self):
+        """Remove expired or excess context keys."""
+        import time
+
+        max_keys = self.get_max_context_keys()
+        expiry_days = self.get_context_expiry_days()
+        expiry_seconds = expiry_days * 86400
+        now = time.time()
+
+        prefix = Config.CONTEXT_KEY_PREFIX
+        all_keys = self.settings.allKeys()
+
+        # Find all context keys with timestamps
+        context_keys = []
+        for key in all_keys:
+            if key.startswith(prefix) and not key.endswith("/_last_access"):
+                ts_key = key + "/_last_access"
+                ts_value = self.settings.value(ts_key)
+                if ts_value is not None:
+                    try:
+                        ts = float(ts_value)
+                        context_keys.append((key, ts))
+                    except (ValueError, TypeError):
+                        context_keys.append((key, 0))
+                else:
+                    context_keys.append((key, 0))
+
+        # Sort by timestamp (oldest first)
+        context_keys.sort(key=lambda x: x[1])
+
+        removed = 0
+        # Remove expired keys
+        to_remove = []
+        for key, ts in context_keys:
+            if now - ts > expiry_seconds:
+                to_remove.append(key)
+        for key in to_remove:
+            self.settings.remove(key)
+            self.settings.remove(key + "/_last_access")
+            removed += 1
+
+        # If still over limit, remove oldest
+        remaining = [k for k, _ in context_keys if k not in to_remove]
+        while len(remaining) > max_keys:
+            oldest = remaining.pop(0)
+            self.settings.remove(oldest)
+            self.settings.remove(oldest + "/_last_access")
+            removed += 1
+
+        self.settings.sync()
+        return removed
+
+    @staticmethod
+    def _now_timestamp():
+        """Return current Unix timestamp as float."""
+        import time
+        return time.time()

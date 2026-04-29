@@ -1,12 +1,91 @@
 from slugify import slugify
 import os
 import ipaddress
+import hashlib
 
 from PyQt6.QtCore import QCoreApplication as QC
 
 from opensnitch.config import Config
 from opensnitch.dialogs.prompt import constants
 from opensnitch.utils.network_aliases import NetworkAliases
+
+
+def build_context_keys(con):
+    """
+    Build a list of context identifiers for a connection, ordered from most
+    specific to least specific. Used for context-aware dialog defaults.
+
+    Hierarchy:
+    1. Exact process path (e.g., /usr/bin/steam)
+    2. Process name + parent directory (groups siblings like steam, steamwebhelper)
+    3. Installation root directory (excludes games like SteamApps/common/)
+    4. Process command line (e.g., curl https://example.com)
+    5. Destination host (e.g., steamcommunity.com)
+
+    Returns a list of context key strings, most specific first.
+    """
+    keys = []
+
+    # Level 1: Exact process path
+    if con.process_path and con.process_path not in ("", "/"):
+        # Skip /proc paths as they're not stable
+        if not con.process_path.startswith("/proc/"):
+            keys.append("path:" + slugify(con.process_path))
+
+    # Level 2: Process name + parent directory
+    # Groups siblings (steam, steamwebhelper, steamclient) together
+    if con.process_path and con.process_path not in ("", "/"):
+        if not con.process_path.startswith("/proc/"):
+            parent_dir = os.path.basename(os.path.dirname(con.process_path))
+            proc_name = os.path.basename(con.process_path)
+            if parent_dir and proc_name:
+                keys.append("dir:" + slugify(f"{parent_dir}/{proc_name}"))
+
+    # Level 3: Installation root directory
+    # Groups all processes under the same app installation
+    # EXCLUDE games launched by Steam (SteamApps/common/)
+    if con.process_path and con.process_path not in ("", "/"):
+        if not con.process_path.startswith("/proc/"):
+            # Check if this is a game launched by Steam - exclude from grouping
+            if "SteamApps/common/" in con.process_path or "steamapps/common/" in con.process_path:
+                # Games get their own context based on their actual path
+                game_dir = os.path.basename(os.path.dirname(con.process_path))
+                proc_name = os.path.basename(con.process_path)
+                keys.append("game:" + slugify(f"{game_dir}/{proc_name}"))
+            else:
+                # Try to find a meaningful installation root
+                # Look for common app directories: .local/share/, opt/, snap/, flatpak/
+                path_parts = con.process_path.split("/")
+                for i in range(len(path_parts) - 2, 1, -1):
+                    segment = path_parts[i]
+                    # Common app installation markers
+                    if segment in ("share", "opt", "snap", "flatpak", "lib"):
+                        root = "/".join(path_parts[:i+1])
+                        if root:
+                            keys.append("root:" + slugify(root))
+                            break
+                    # User-specific app directories
+                    elif segment == ".local" and i + 1 < len(path_parts) and path_parts[i+1] == "share":
+                        app_dir = path_parts[i+2] if i + 2 < len(path_parts) else ""
+                        if app_dir:
+                            keys.append("root:" + slugify(f".local/share/{app_dir}"))
+                            break
+
+    # Level 4: Process command line
+    if con.process_args and len(con.process_args) > 0:
+        cmdline = " ".join(con.process_args)
+        # Truncate very long command lines to avoid excessive key length
+        if len(cmdline) > 256:
+            cmdline = cmdline[:256] + "..."
+        # Skip if it's just the process path with no meaningful args
+        if cmdline != con.process_path:
+            keys.append("cmd:" + slugify(cmdline))
+
+    # Level 5: Destination host
+    if con.dst_host and con.dst_host not in ("", "0.0.0.0", "::"):
+        keys.append("host:" + slugify(con.dst_host))
+
+    return keys
 
 def truncate_text(text, max_size=64):
     if len(text) > max_size:
