@@ -16,9 +16,9 @@ def build_context_keys(con):
     specific to least specific. Used for context-aware dialog defaults.
 
     Hierarchy:
-    1. Exact process path (e.g., /usr/bin/steam)
-    2. Process name + parent directory (groups siblings like steam, steamwebhelper)
-    3. Installation root directory (excludes games like SteamApps/common/)
+    1. Exact process path (e.g., /usr/bin/firefox)
+    2. Process name + parent directory (groups siblings in same dir)
+    3. Application installation root (excludes "content" subdirectories)
     4. Process command line (e.g., curl https://example.com)
     5. Destination host (e.g., steamcommunity.com)
 
@@ -33,7 +33,7 @@ def build_context_keys(con):
             keys.append("path:" + slugify(con.process_path))
 
     # Level 2: Process name + parent directory
-    # Groups siblings (steam, steamwebhelper, steamclient) together
+    # Groups siblings (e.g., firefox, firefox-bin, plugin-container)
     if con.process_path and con.process_path not in ("", "/"):
         if not con.process_path.startswith("/proc/"):
             parent_dir = os.path.basename(os.path.dirname(con.process_path))
@@ -41,21 +41,35 @@ def build_context_keys(con):
             if parent_dir and proc_name:
                 keys.append("dir:" + slugify(f"{parent_dir}/{proc_name}"))
 
-    # Level 3: Installation root directory
+    # Level 3: Application installation root
     # Groups all processes under the same app installation
-    # EXCLUDE games launched by Steam (SteamApps/common/)
+    # EXCLUDE processes in "content" subdirectories (games, media, etc.)
     if con.process_path and con.process_path not in ("", "/"):
         if not con.process_path.startswith("/proc/"):
-            # Check if this is a game launched by Steam - exclude from grouping
-            if "SteamApps/common/" in con.process_path or "steamapps/common/" in con.process_path:
-                # Games get their own context based on their actual path
-                game_dir = os.path.basename(os.path.dirname(con.process_path))
+            # Check if this process is in a "content" subdirectory
+            # These are directories that contain things launched BY the app,
+            # not parts OF the app itself
+            content_dirs = (
+                "common", "games", "applications", "content", "media",
+                "libraries", "mods", "dlc", "packages", "apps",
+                "SteamApps", "steamapps"
+            )
+            path_parts = con.process_path.split("/")
+            is_content = any(part.lower() in content_dirs for part in path_parts)
+
+            if is_content:
+                # Content processes get their own context based on their actual path
+                content_dir = os.path.basename(os.path.dirname(con.process_path))
                 proc_name = os.path.basename(con.process_path)
-                keys.append("game:" + slugify(f"{game_dir}/{proc_name}"))
+                keys.append("content:" + slugify(f"{content_dir}/{proc_name}"))
             else:
                 # Try to find a meaningful installation root
-                # Look for common app directories: .local/share/, opt/, snap/, flatpak/
-                path_parts = con.process_path.split("/")
+                # Common patterns:
+                # /opt/<app>/ - applications installed in /opt
+                # /usr/share/<app>/ - system applications
+                # ~/.local/share/<app>/ - user applications
+                # /snap/<app>/ - snap packages
+                # /var/lib/flatpak/ - flatpak applications
                 for i in range(len(path_parts) - 2, 1, -1):
                     segment = path_parts[i]
                     # Common app installation markers
@@ -70,6 +84,11 @@ def build_context_keys(con):
                         if app_dir:
                             keys.append("root:" + slugify(f".local/share/{app_dir}"))
                             break
+                    # /opt/<app>/ pattern
+                    elif segment == "opt" and i + 1 < len(path_parts):
+                        app_dir = path_parts[i+1]
+                        keys.append("root:" + slugify(f"opt/{app_dir}"))
+                        break
 
     # Level 4: Process command line
     if con.process_args and len(con.process_args) > 0:
