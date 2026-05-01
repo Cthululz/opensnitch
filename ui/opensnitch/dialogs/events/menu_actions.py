@@ -7,7 +7,6 @@ import opensnitch.proto as proto
 ui_pb2, ui_pb2_grpc = proto.import_()
 
 from opensnitch.customwidgets.firewalltableview import FirewallTableModel
-from opensnitch.dialogs.ruleseditor import RulesEditorDialog
 from opensnitch.rules import Rule
 from opensnitch.utils import (
     Message
@@ -377,9 +376,7 @@ class MenuActions(views.ViewsManager):
                         QC.translate("stats", "Rule not found by that name and node"),
                         QtWidgets.QMessageBox.Icon.Warning)
                     return
-                print(node, name)
-                r = RulesEditorDialog(modal=False)
-                r.edit_rule(records, node)
+                self._rules_dialog.edit_rule(records, node)
 
                 break
         elif cur_idx ==  constants.TAB_RULES and self.rulesTable.isVisible():
@@ -392,8 +389,7 @@ class MenuActions(views.ViewsManager):
                             QC.translate("stats", "Rule not found by that name and node"),
                             QtWidgets.QMessageBox.Icon.Warning)
                     return
-                r = RulesEditorDialog(modal=False)
-                r.edit_rule(records, node)
+                self._rules_dialog.edit_rule(records, node)
                 break
 
         elif cur_idx == constants.TAB_RULES and self.fwTable.isVisible() or \
