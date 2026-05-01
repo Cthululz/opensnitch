@@ -35,7 +35,8 @@ class MenuActions(views.ViewsManager):
 
     def table_menu_export_clipboard(self, cur_idx, model, selection):
         rules_list = []
-        if cur_idx == constants.TAB_RULES and self.fwTable.isVisible():
+        if cur_idx == constants.TAB_RULES and self.fwTable.isVisible() or \
+                cur_idx == constants.TAB_FIREWALL:
             for idx in selection:
                 uuid = model.index(idx.row(), FirewallTableModel.COL_UUID).data()
                 node = model.index(idx.row(), FirewallTableModel.COL_ADDR).data()
@@ -148,7 +149,8 @@ class MenuActions(views.ViewsManager):
                     self._rules.add_rules(node_addr, [rule])
                     self.save_ntf(nid, ntf)
 
-        elif cur_idx == constants.TAB_RULES and self.fwTable.isVisible():
+        elif cur_idx == constants.TAB_RULES and self.fwTable.isVisible() or \
+                cur_idx == constants.TAB_FIREWALL:
             nodes_updated = []
             r_errs = []
             for idx in selection:
@@ -191,7 +193,8 @@ class MenuActions(views.ViewsManager):
                     self._rules.add_rules(addr, [rule])
                     self.save_ntf(nid, ntf)
 
-        elif cur_idx == constants.TAB_RULES and self.fwTable.isVisible():
+        elif cur_idx == constants.TAB_RULES and self.fwTable.isVisible() or \
+                cur_idx == constants.TAB_FIREWALL:
             nodes_updated = []
             r_errs = []
             for idx in selection:
@@ -250,7 +253,8 @@ class MenuActions(views.ViewsManager):
                 nid = self.send_notification(node_addr, ntf, self._notification_callback)
                 if nid is not None:
                     self.save_ntf(nid, ntf)
-        elif cur_idx == constants.TAB_RULES and self.fwTable.isVisible():
+        elif cur_idx == constants.TAB_RULES and self.fwTable.isVisible() or \
+                cur_idx == constants.TAB_FIREWALL:
             nodes_updated = []
             for idx in selection:
                 uuid = model.index(idx.row(), FirewallTableModel.COL_UUID).data()
@@ -290,7 +294,8 @@ class MenuActions(views.ViewsManager):
                 if nid is not None:
                     self.save_ntf(nid, ntf)
 
-        elif cur_idx == constants.TAB_RULES and self.fwTable.isVisible():
+        elif cur_idx == constants.TAB_RULES and self.fwTable.isVisible() or \
+                cur_idx == constants.TAB_FIREWALL:
             nodes_updated = []
             for idx in selection:
                 uuid = model.index(idx.row(), FirewallTableModel.COL_UUID).data()
@@ -321,7 +326,8 @@ class MenuActions(views.ViewsManager):
         if ret == QtWidgets.QMessageBox.StandardButton.Cancel:
             return False
 
-        if cur_idx == constants.TAB_RULES and self.fwTable.isVisible():
+        if cur_idx == constants.TAB_RULES and self.fwTable.isVisible() or \
+                cur_idx == constants.TAB_FIREWALL:
             nodes_updated = {}
             for idx in selection:
                 uuid = model.index(idx.row(), FirewallTableModel.COL_UUID).data()
@@ -390,7 +396,8 @@ class MenuActions(views.ViewsManager):
                 r.edit_rule(records, node)
                 break
 
-        elif cur_idx == constants.TAB_RULES and self.fwTable.isVisible():
+        elif cur_idx == constants.TAB_RULES and self.fwTable.isVisible() or \
+                cur_idx == constants.TAB_FIREWALL:
             for idx in selection:
                 uuid = model.index(idx.row(), FirewallTableModel.COL_UUID).data()
                 node = model.index(idx.row(), FirewallTableModel.COL_ADDR).data()
