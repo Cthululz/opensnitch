@@ -397,6 +397,15 @@ class MenuActions(views.ViewsManager):
             for idx in selection:
                 uuid = model.index(idx.row(), FirewallTableModel.COL_UUID).data()
                 node = model.index(idx.row(), FirewallTableModel.COL_ADDR).data()
-                self.load_fw_rule(node, uuid)
+                # Get the protobuf rule and open the editor dialog
+                proto_rule = self._fw.get_protorule_by_uuid(node, uuid)
+                if proto_rule is not None:
+                    from opensnitch.dialogs.ruleseditor import constants as re_constants
+                    re_constants.WORK_MODE = re_constants.EDIT_RULE
+                    self._rules_dialog._reset_state()
+                    self._rules_dialog.rule = proto_rule
+                    result = self._rules_dialog.load_rule(addr=node, rule=proto_rule)
+                    if result:
+                        self._rules_dialog.show()
 
                 break
