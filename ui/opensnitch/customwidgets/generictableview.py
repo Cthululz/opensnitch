@@ -366,6 +366,7 @@ class GenericTableView(QTableView):
         self.ctrlPressed = False
         self._rows_selection = {}
         self.trackingCol = 0
+        self.maxRowsInViewport = 0  # initialized properly by calculateRowsInViewport()
 
         self.verticalHeader().setVisible(True)
         self.horizontalHeader().setDefaultAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -558,6 +559,8 @@ class GenericTableView(QTableView):
         self.refresh()
 
     def onRowCountChanged(self):
+        if self.maxRowsInViewport == 0 or self.vScrollBar is None:
+            return
         totalCount = self.model().totalRowCount
         offset = self.model().queryOffset
         vmax = max(0, totalCount - self.maxRowsInViewport+1)

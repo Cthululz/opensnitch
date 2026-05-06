@@ -42,8 +42,30 @@ class Config:
 
     DEFAULT_TARGET_PROCESS = 0
     ACTION_DROP_IDX = 0
+    ACTION_DENY_IDX = 0
     ACTION_ALLOW_IDX = 1
     ACTION_REJECT_IDX = 2
+
+    # Missing from upstream 1.8.0
+    DEFAULT_PERSIST_INTERCEPTION_STATE = "global/persist_interception_state"
+    DEFAULT_FW_INTERCEPTION_ENABLED = "global/fw_interception_enabled"
+    LAST_USED_ACTION = "global/last_used_action"
+    LAST_USED_DURATION = "global/last_used_duration"
+    LAST_USED_TARGET = "global/last_used_target"
+    LAST_USED_UID = "global/last_used_uid"
+    LAST_USED_DSTIP = "global/last_used_dstip"
+    LAST_USED_DSTPORT = "global/last_used_dstport"
+    LAST_USED_CHECKSUM = "global/last_used_checksum"
+    LAST_USED_ADVANCED = "global/last_used_advanced"
+    RULE_TYPE_RANGE = "range"
+
+    # Duration constants referenced but missing
+    DURATION_5 = "5m"
+    DURATION_15 = "15m"
+    DURATION_30 = "30m"
+    DURATION_1 = "1h"
+    DURATION_12 = "12h"
+    # CONTEXT_FIELD_ is just a prefix used in string matching, not a real constant
 
     # don't translate
     ACTION_ALLOW = "allow"
@@ -125,7 +147,7 @@ class Config:
     CONTEXT_AWARE_ENABLED = "global/context_aware_enabled"
     CONTEXT_MAX_KEYS = "global/context_max_keys"
     CONTEXT_EXPIRY_DAYS = "global/context_expiry_days"
-    CONTEXT_KEY_PREFIX = "global/popup_ctx/"
+    CONTEXT_KEY_PREFIX = "global.popup_ctx."
 
     # Fields stored per context
     CONTEXT_FIELD_ACTION = "action"
@@ -387,8 +409,9 @@ class Config:
 
     def get_context_setting(self, field, context_keys):
         """
-        Look up a setting value, walking through context keys from most
-        specific to least specific. Falls back to global LAST_USED_* keys.
+        Look up a setting value from the most specific context key only.
+        Does NOT walk through less-specific keys to prevent cross-app
+        setting leakage.
 
         Args:
             field: One of Config.CONTEXT_FIELD_* constants
@@ -397,43 +420,33 @@ class Config:
         Returns:
             The setting value, or None if not found
         """
-        if not self.context_aware_enabled():
+        if not self.context_aware_enabled() or not context_keys:
             return None
 
-        # Walk context keys from most specific to least specific
-        for ctx_id in context_keys:
-            key = self._context_key(ctx_id, field)
-            if self.hasKey(key):
-                # Update last accessed timestamp
-                self.setSettings(key + "/_last_access", self._now_timestamp())
-                return self.getSettings(key)
+        # Only check the most specific context key (matches set_context_setting)
+        ctx_id = context_keys[0]
+        key = self._context_key(ctx_id, field)
+        if self.hasKey(key):
+            self.setSettings(key + "/_last_access", self._now_timestamp())
+            return self.getSettings(key)
 
         return None
 
     def set_context_setting(self, field, value, context_keys):
-        """
-        Save a setting value to the most specific context key.
-
-        Args:
-            field: One of Config.CONTEXT_FIELD_* constants
-            value: The value to save
-            context_keys: List of context identifiers (most specific first)
-        """
+        """Save to the most specific context key only. Less-specific keys
+        like 'root:usr' are shared across apps and would cause cross-app
+        setting pollution if we save to them."""
         if not self.context_aware_enabled() or not context_keys:
+            with open("/tmp/opensnitch-debug.log", "a") as _f: _f.write(f"[DEBUG] set_context_setting: context_aware={self.context_aware_enabled()}, keys={context_keys}")
             return
 
-        # Save to the most specific context
+        # Only save to the most specific context
         ctx_id = context_keys[0]
         key = self._context_key(ctx_id, field)
+        with open("/tmp/opensnitch-debug.log", "a") as _f: _f.write(f"[DEBUG] set_context_setting: ctx_id={ctx_id}, field={field}, key={key}, value={value}")
         self.setSettings(key, value)
         self.setSettings(key + "/_last_access", self._now_timestamp())
-
-        # Also save to less specific contexts for fallback
-        for fallback_ctx in context_keys[1:]:
-            fallback_key = self._context_key(fallback_ctx, field)
-            if not self.hasKey(fallback_key):
-                self.setSettings(fallback_key, value)
-                self.setSettings(fallback_key + "/_last_access", self._now_timestamp())
+        self.settings.sync()
 
     def clear_context_settings(self):
         """Clear all context-aware settings."""

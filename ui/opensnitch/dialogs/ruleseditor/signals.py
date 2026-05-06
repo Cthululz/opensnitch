@@ -1,10 +1,11 @@
-from PyQt6 import QtWidgets
+from PyQt6 import QtWidgets, QtCore
 
 def connect_all(win):
     win.buttonBox.button(QtWidgets.QDialogButtonBox.StandardButton.Reset).clicked.connect(win.cb_reset_clicked)
     win.buttonBox.button(QtWidgets.QDialogButtonBox.StandardButton.Close).clicked.connect(win.cb_close_clicked)
-    win.buttonBox.button(QtWidgets.QDialogButtonBox.StandardButton.Save).clicked.connect(win.cb_save_clicked)
+    win.buttonBox.button(QtWidgets.QDialogButtonBox.StandardButton.Apply).clicked.connect(win.cb_save_clicked)
     win.buttonBox.button(QtWidgets.QDialogButtonBox.StandardButton.Help).clicked.connect(win.cb_help_clicked)
+    win.saveCloseButton.clicked.connect(win.cb_save_close_clicked)
 
     win.selectListButton.clicked.connect(win.cb_select_list_button_clicked)
     win.selectListRegexpButton.clicked.connect(win.cb_select_regexp_list_button_clicked)
@@ -28,4 +29,3 @@ def connect_all(win):
     win.uidCombo.currentIndexChanged.connect(win.cb_uid_combo_changed)
     win.nodesCombo.currentIndexChanged.connect(win.cb_nodes_combo_changed)
     win.md5Check.toggled.connect(win.cb_md5check_toggled)
-

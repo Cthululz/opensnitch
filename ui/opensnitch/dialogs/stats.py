@@ -1312,10 +1312,23 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
             selection = table.selectedRows()
 
             menu = QtWidgets.QMenu()
+            exportMenu = QtWidgets.QMenu(QC.translate("stats", "Export"))
+            _menu_clear_expired = menu.addAction(QC.translate("stats", "Clear expired temp rules"))
+
+            # If no rule is selected, only show export and clear options
+            if not selection or len(selection) == 0:
+                menu.addSeparator()
+                _toClipboard = exportMenu.addAction(QC.translate("stats", "To clipboard"))
+                _toDisk = exportMenu.addAction(QC.translate("stats", "To disk"))
+                menu.addMenu(exportMenu)
+                point = QtCore.QPoint(pos.x()+10, pos.y()+5)
+                menu.exec(table.mapToGlobal(point))
+                return
+
+            # Otherwise show full menu with rule actions
             durMenu = QtWidgets.QMenu(self.COL_STR_DURATION)
             actionMenu = QtWidgets.QMenu(self.COL_STR_ACTION)
             nodesMenu = QtWidgets.QMenu(QC.translate("stats", "Apply to"))
-            exportMenu = QtWidgets.QMenu(QC.translate("stats", "Export"))
             nodes_menu = []
             if self._nodes.count() > 0:
                 for node in self._nodes.get_nodes():
@@ -1341,8 +1354,6 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
 
             is_rule_enabled = True
             _menu_enable = None
-            # if there's more than one rule selected, we choose an action
-            # based on the status of the first rule.
             if selection and len(selection) > 0:
                 is_rule_enabled = selection[0][self.COL_R_ENABLED]
                 menu_label_enable = QC.translate("stats", "Disable")
@@ -1355,7 +1366,6 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
             _menu_edit = menu.addAction(QC.translate("stats", "Edit"))
             _menu_delete = menu.addAction(QC.translate("stats", "Delete"))
             menu.addSeparator()
-            _menu_clear_expired = menu.addAction(QC.translate("stats", "Clear expired temp rules"))
 
             # scoped clear options
             _menu_clear_app = None
@@ -1366,15 +1376,31 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
                 rec = self._get_rule(rule_name, node_addr)
                 if rec is not None:
                     operand = rec.value(RuleFields.OpOperand)
-                    if operand in (Config.OPERAND_PROCESS_PATH, Config.OPERAND_PROCESS_COMMAND, Config.OPERAND_PROCESS_ID):
-                        _menu_clear_app = menu.addAction(QC.translate("stats", "Clear temp rules for this app"))
-                    if operand in (Config.OPERAND_DEST_IP, Config.OPERAND_DEST_HOST, Config.OPERAND_DEST_PORT, Config.OPERAND_DEST_NETWORK):
-                        _menu_clear_dst = menu.addAction(QC.translate("stats", "Clear temp rules for this destination"))
-
-            menu.addSeparator()
-            _toClipboard = exportMenu.addAction(QC.translate("stats", "To clipboard"))
-            _toDisk = exportMenu.addAction(QC.translate("stats", "To disk"))
-            menu.addMenu(exportMenu)
+                    opdata = rec.value(RuleFields.OpData)
+                    # For LIST rules, parse the JSON operator list
+                    if operand == Config.RULE_TYPE_LIST and opdata:
+                        try:
+                            import json
+                            op_list = json.loads(opdata) if isinstance(opdata, str) else opdata
+                        except Exception:
+                            op_list = []
+                        # Check each operator for app-type or dest-type operands
+                        for op in op_list:
+                            if isinstance(op, dict):
+                                op_op = op.get("operand", "")
+                            else:
+                                op_op = str(op)
+                            if op_op in (Config.OPERAND_PROCESS_PATH, Config.OPERAND_PROCESS_COMMAND, Config.OPERAND_PROCESS_ID):
+                                _menu_clear_app = menu.addAction(QC.translate("stats", "Clear temp rules for this app"))
+                                break
+                            if op_op in (Config.OPERAND_DEST_IP, Config.OPERAND_DEST_HOST, Config.OPERAND_DEST_PORT, Config.OPERAND_DEST_NETWORK):
+                                _menu_clear_dst = menu.addAction(QC.translate("stats", "Clear temp rules for this destination"))
+                                break
+                    else:
+                        if operand in (Config.OPERAND_PROCESS_PATH, Config.OPERAND_PROCESS_COMMAND, Config.OPERAND_PROCESS_ID):
+                            _menu_clear_app = menu.addAction(QC.translate("stats", "Clear temp rules for this app"))
+                        if operand in (Config.OPERAND_DEST_IP, Config.OPERAND_DEST_HOST, Config.OPERAND_DEST_PORT, Config.OPERAND_DEST_NETWORK):
+                            _menu_clear_dst = menu.addAction(QC.translate("stats", "Clear temp rules for this destination"))
 
             # move away menu a few pixels to the right, to avoid clicking on it by mistake
             point = QtCore.QPoint(pos.x()+10, pos.y()+5)
@@ -1482,15 +1508,41 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
         if rec is None:
             return
         operand = rec.value(RuleFields.OpOperand)
-        data = rec.value(RuleFields.OpData)
+        opdata = rec.value(RuleFields.OpData)
+
+        # For LIST rules, extract the relevant operand from the operator list
+        actual_operand = operand
+        actual_data = opdata
+        if operand == Config.RULE_TYPE_LIST and opdata:
+            try:
+                import json
+                op_list = json.loads(opdata) if isinstance(opdata, str) else opdata
+                if isinstance(op_list, list):
+                    for op in op_list:
+                        if isinstance(op, dict):
+                            op_op = op.get("operand", "")
+                            op_dat = op.get("data", "")
+                        else:
+                            op_op = str(op)
+                            op_dat = ""
+                        if scope == self.CLEAR_APP and op_op in (Config.OPERAND_PROCESS_PATH, Config.OPERAND_PROCESS_COMMAND, Config.OPERAND_PROCESS_ID):
+                            actual_operand = op_op
+                            actual_data = op_dat
+                            break
+                        if scope == self.CLEAR_DST and op_op in (Config.OPERAND_DEST_IP, Config.OPERAND_DEST_HOST, Config.OPERAND_DEST_PORT, Config.OPERAND_DEST_NETWORK):
+                            actual_operand = op_op
+                            actual_data = op_dat
+                            break
+            except Exception:
+                pass
 
         # guard: ensure scope matches operand
-        if scope == self.CLEAR_APP and operand not in (Config.OPERAND_PROCESS_PATH, Config.OPERAND_PROCESS_COMMAND, Config.OPERAND_PROCESS_ID):
+        if scope == self.CLEAR_APP and actual_operand not in (Config.OPERAND_PROCESS_PATH, Config.OPERAND_PROCESS_COMMAND, Config.OPERAND_PROCESS_ID):
             return
-        if scope == self.CLEAR_DST and operand not in (Config.OPERAND_DEST_IP, Config.OPERAND_DEST_HOST, Config.OPERAND_DEST_PORT, Config.OPERAND_DEST_NETWORK):
+        if scope == self.CLEAR_DST and actual_operand not in (Config.OPERAND_DEST_IP, Config.OPERAND_DEST_HOST, Config.OPERAND_DEST_PORT, Config.OPERAND_DEST_NETWORK):
             return
 
-        matches = self._rules.get_temp_rules_by_operand(node_addr, operand, data)
+        matches = self._rules.get_temp_rules_by_operand(node_addr, actual_operand, actual_data)
         if len(matches) == 0:
             return
         for name, node in matches:

@@ -37,6 +37,7 @@ from . import (
 DIALOG_UI_PATH = "%s/../../res/ruleseditor.ui" % os.path.dirname(sys.modules[__name__].__file__)
 class RulesEditorDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
 
+    LOG_TAG = "[rules editor]"
     _notification_callback = QtCore.pyqtSignal(str, ui_pb2.NotificationReply)
 
     def __init__(self, parent=None, modal=True, appicon=None):
@@ -58,12 +59,9 @@ class RulesEditorDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
 
         utils.load_aliases_into_menu(self)
         utils.set_rulename_validator(self)
-        self.buttonBox.setStandardButtons(
-            QtWidgets.QDialogButtonBox.StandardButton.Help |
-            QtWidgets.QDialogButtonBox.StandardButton.Reset |
-            QtWidgets.QDialogButtonBox.StandardButton.Close |
-            QtWidgets.QDialogButtonBox.StandardButton.Save
-        )
+        # ButtonBox already has Apply, Close, Help, Reset from the .ui file.
+        # "Save & Close" is a separate QPushButton in the .ui file.
+        self.saveCloseButton.setDefault(True)
 
         signals.connect_all(self)
         utils.configure_icons(self)
@@ -144,6 +142,45 @@ class RulesEditorDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
         pass
 
     def cb_close_clicked(self):
+        self.hide()
+
+    def cb_save_close_clicked(self):
+        if self.nodesCombo.count() == 0:
+            utils.set_status_error(self, QC.translate("rules", "There're no nodes connected."))
+            return
+
+        rule_name = self.ruleNameEdit.text()
+        if rule_name == "":
+            return
+
+        node = nodes.get_node_addr(self)
+        if constants.WORK_MODE == constants.ADD_RULE and self._db.get_rule(rule_name, node).next() == True:
+            utils.set_status_error(self, QC.translate("rules", "There's already a rule with this name."))
+            return
+        elif constants.WORK_MODE == constants.EDIT_RULE and rule_name != self._old_rule_name and \
+            self._db.get_rule(rule_name, node).next() == True:
+            utils.set_status_error(self, QC.translate("rules", "There's already a rule with this name."))
+            return
+
+        if self.md5Check.isChecked() and not self.procCheck.isChecked():
+            utils.set_status_error(self, QC.translate("rules", "Process path must be checked in order to verify checksums."))
+            return
+
+        result, error = self.save_rule()
+        if result is False:
+            utils.set_status_error(self, error)
+            return
+
+        self.add_rule()
+        if self._old_rule_name is not None and self._old_rule_name != self.rule.name:
+            self.delete_rule()
+
+        self._old_rule_name = rule_name
+
+        if constants.WORK_MODE == constants.ADD_RULE:
+            constants.WORK_MODE = constants.EDIT_RULE
+
+        self._rules.updated.emit(0)
         self.hide()
 
     def cb_reset_clicked(self):

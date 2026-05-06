@@ -566,11 +566,16 @@ class PromptDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
         # Try context-aware settings first, then fall back to global LAST_USED_*
         context_keys = utils.build_context_keys(con)
 
+        # Only fall back to global LAST_USED_* when no context keys exist
+        # (i.e., truly unknown process). Known processes use defaults, not
+        # the last-used from a different app.
+        _use_global_last_used = not context_keys
+
         # Action
         ctx_action = self._cfg.get_context_setting(Config.CONTEXT_FIELD_ACTION, context_keys)
         if ctx_action is not None:
             self._default_action = int(ctx_action)
-        elif self._cfg.hasKey(self._cfg.LAST_USED_ACTION):
+        elif _use_global_last_used and self._cfg.hasKey(self._cfg.LAST_USED_ACTION):
             self._default_action = self._cfg.getInt(self._cfg.LAST_USED_ACTION)
         else:
             self._default_action = self._cfg.getInt(self._cfg.DEFAULT_ACTION_KEY)
@@ -579,7 +584,7 @@ class PromptDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
         ctx_duration = self._cfg.get_context_setting(Config.CONTEXT_FIELD_DURATION, context_keys)
         if ctx_duration is not None:
             self.durationCombo.setCurrentIndex(int(ctx_duration))
-        elif self._cfg.hasKey(self._cfg.LAST_USED_DURATION):
+        elif _use_global_last_used and self._cfg.hasKey(self._cfg.LAST_USED_DURATION):
             self.durationCombo.setCurrentIndex(self._cfg.getInt(self._cfg.LAST_USED_DURATION))
         else:
             utils.set_default_duration(self._cfg, self.durationCombo)
@@ -590,7 +595,7 @@ class PromptDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
         ctx_dstip = self._cfg.get_context_setting(Config.CONTEXT_FIELD_DSTIP, context_keys)
         if ctx_dstip is not None:
             self.checkDstIP.setChecked(bool(ctx_dstip))
-        elif self._cfg.hasKey(self._cfg.LAST_USED_DSTIP):
+        elif _use_global_last_used and self._cfg.hasKey(self._cfg.LAST_USED_DSTIP):
             self.checkDstIP.setChecked(self._cfg.getBool(self._cfg.LAST_USED_DSTIP))
         else:
             self.checkDstIP.setChecked(self._cfg.getBool(self._cfg.DEFAULT_POPUP_ADVANCED_DSTIP))
@@ -598,7 +603,7 @@ class PromptDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
         ctx_dstport = self._cfg.get_context_setting(Config.CONTEXT_FIELD_DSTPORT, context_keys)
         if ctx_dstport is not None:
             self.checkDstPort.setChecked(bool(ctx_dstport))
-        elif self._cfg.hasKey(self._cfg.LAST_USED_DSTPORT):
+        elif _use_global_last_used and self._cfg.hasKey(self._cfg.LAST_USED_DSTPORT):
             self.checkDstPort.setChecked(self._cfg.getBool(self._cfg.LAST_USED_DSTPORT))
         else:
             self.checkDstPort.setChecked(self._cfg.getBool(self._cfg.DEFAULT_POPUP_ADVANCED_DSTPORT))
@@ -606,7 +611,7 @@ class PromptDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
         ctx_uid = self._cfg.get_context_setting(Config.CONTEXT_FIELD_UID, context_keys)
         if ctx_uid is not None:
             self.checkUserID.setChecked(bool(ctx_uid))
-        elif self._cfg.hasKey(self._cfg.LAST_USED_UID):
+        elif _use_global_last_used and self._cfg.hasKey(self._cfg.LAST_USED_UID):
             self.checkUserID.setChecked(self._cfg.getBool(self._cfg.LAST_USED_UID))
         else:
             self.checkUserID.setChecked(self._cfg.getBool(self._cfg.DEFAULT_POPUP_ADVANCED_UID))
@@ -614,7 +619,7 @@ class PromptDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
         ctx_checksum = self._cfg.get_context_setting(Config.CONTEXT_FIELD_CHECKSUM, context_keys)
         if ctx_checksum is not None:
             self.checkSum.setChecked(bool(ctx_checksum))
-        elif self._cfg.hasKey(self._cfg.LAST_USED_CHECKSUM):
+        elif _use_global_last_used and self._cfg.hasKey(self._cfg.LAST_USED_CHECKSUM):
             self.checkSum.setChecked(self._cfg.getBool(self._cfg.LAST_USED_CHECKSUM))
         else:
             self.checkSum.setChecked(self._cfg.getBool(self._cfg.DEFAULT_POPUP_ADVANCED_CHECKSUM))
@@ -623,7 +628,7 @@ class PromptDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
         if ctx_advanced is not None:
             if bool(ctx_advanced):
                 self.checkAdvanced.toggle()
-        elif self._cfg.hasKey(self._cfg.LAST_USED_ADVANCED):
+        elif _use_global_last_used and self._cfg.hasKey(self._cfg.LAST_USED_ADVANCED):
             if self._cfg.getBool(self._cfg.LAST_USED_ADVANCED):
                 self.checkAdvanced.toggle()
         elif self._cfg.getBool(self._cfg.DEFAULT_POPUP_ADVANCED):
