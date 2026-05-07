@@ -567,19 +567,16 @@ class GenericTableView(QTableView):
         if totalCount < self.maxRowsInViewport and offset > 0:
             vmax = self.maxRowsInViewport-5
         showScroll = False
-        # we don't need to show the scrollbar if all the items fit in the
-        # viewport.
-        # However, if the user paginated the view and the last items fit in the
-        # viewport, we still need to show the scrollbar to allow go back to the
-        # previous view.
         if totalCount > self.maxRowsInViewport or (totalCount < self.maxRowsInViewport and offset > 0):
             showScroll = True
         self.vScrollBar.setVisible(showScroll)
 
         self.vScrollBar.setMinimum(0)
-        # one scrollbar step is one row
         self.vScrollBar.setMaximum(vmax)
-        self.model().refreshViewport(self.vScrollBar.value(), self.maxRowsInViewport, force=self.forceViewRefresh())
+        # Skip viewport refresh during pagination — scrollbar position
+        # will be set explicitly after nextRecord/prevRecord completes.
+        if not getattr(self, '_paginating', False):
+            self.model().refreshViewport(self.vScrollBar.value(), self.maxRowsInViewport, force=self.forceViewRefresh())
 
     def clearSelection(self):
         self.selectionModel().reset()
@@ -642,17 +639,20 @@ class GenericTableView(QTableView):
         limit = self.model().queryLimit
         if vSBNewValue == self.vScrollBar.maximum() and totalRows == limit:
             self.vScrollBar.blockSignals(True)
-            # position the scrollbar before querying the db, and avoid firing
-            # an onScrollbarValueChanged event.
-            self.vScrollBar.setValue(0)
-            self.vScrollBar.blockSignals(False)
+            # Flag that we're paginating so onRowCountChanged doesn't
+            # refresh the viewport from the wrong scroll position.
+            self._paginating = True
             self.model().nextRecord(limit)
+            self._paginating = False
+            # Position near bottom of new page for continuous scrolling feel
+            self.vScrollBar.setValue(self.vScrollBar.maximum() - 1)
+            self.vScrollBar.blockSignals(False)
         elif vSBNewValue == 0 and offset != 0:
-            self.model().prevRecord(limit)
-            # the scrollbar in this case must be positioned after the query,
-            # in order to override it.
             self.vScrollBar.blockSignals(True)
-            self.vScrollBar.setValue(self.vScrollBar.maximum())
+            self._paginating = True
+            self.model().prevRecord(limit)
+            self._paginating = False
+            self.vScrollBar.setValue(1)
             self.vScrollBar.blockSignals(False)
         else:
             self.model().refreshViewport(vSBNewValue, self.maxRowsInViewport, force=True)

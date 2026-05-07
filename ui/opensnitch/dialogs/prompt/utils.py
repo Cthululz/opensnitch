@@ -15,12 +15,12 @@ def build_context_keys(con):
     Build a list of context identifiers for a connection, ordered from most
     specific to least specific. Used for context-aware dialog defaults.
 
-    Hierarchy:
-    1. Exact process path (e.g., /usr/bin/firefox)
-    2. Process name + parent directory (groups siblings in same dir)
-    3. Application installation root (excludes "content" subdirectories)
-    4. Process command line (e.g., curl https://example.com)
-    5. Destination host (e.g., steamcommunity.com)
+    Hierarchy (per-app only):
+    1. Exact process path (e.g., /usr/bin/curl)
+    2. Process name + parent directory
+    3. Application installation root
+    4. Process command line
+    5. Destination host
 
     Returns a list of context key strings, most specific first.
     """
@@ -28,7 +28,6 @@ def build_context_keys(con):
 
     # Level 1: Exact process path
     if con.process_path and con.process_path not in ("", "/"):
-        # Skip /proc paths as they're not stable
         if not con.process_path.startswith("/proc/"):
             keys.append("path:" + slugify(con.process_path))
 

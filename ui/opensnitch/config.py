@@ -409,9 +409,7 @@ class Config:
 
     def get_context_setting(self, field, context_keys):
         """
-        Look up a setting value from the most specific context key only.
-        Does NOT walk through less-specific keys to prevent cross-app
-        setting leakage.
+        Look up a setting from the most specific context key (per-app path key).
 
         Args:
             field: One of Config.CONTEXT_FIELD_* constants
@@ -423,7 +421,6 @@ class Config:
         if not self.context_aware_enabled() or not context_keys:
             return None
 
-        # Only check the most specific context key (matches set_context_setting)
         ctx_id = context_keys[0]
         key = self._context_key(ctx_id, field)
         if self.hasKey(key):
@@ -433,17 +430,12 @@ class Config:
         return None
 
     def set_context_setting(self, field, value, context_keys):
-        """Save to the most specific context key only. Less-specific keys
-        like 'root:usr' are shared across apps and would cause cross-app
-        setting pollution if we save to them."""
+        """Save to the most specific context key (per-app path key)."""
         if not self.context_aware_enabled() or not context_keys:
-            with open("/tmp/opensnitch-debug.log", "a") as _f: _f.write(f"[DEBUG] set_context_setting: context_aware={self.context_aware_enabled()}, keys={context_keys}")
             return
 
-        # Only save to the most specific context
         ctx_id = context_keys[0]
         key = self._context_key(ctx_id, field)
-        with open("/tmp/opensnitch-debug.log", "a") as _f: _f.write(f"[DEBUG] set_context_setting: ctx_id={ctx_id}, field={field}, key={key}, value={value}")
         self.setSettings(key, value)
         self.setSettings(key + "/_last_access", self._now_timestamp())
         self.settings.sync()

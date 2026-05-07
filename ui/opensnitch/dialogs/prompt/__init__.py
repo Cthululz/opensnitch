@@ -23,6 +23,7 @@ from opensnitch.rules import Rules, Rule
 from opensnitch.nodes import Nodes
 
 from opensnitch.dialogs.prompt import _utils, _constants, _checksums, _details
+from opensnitch.dialogs.prompt.utils import build_context_keys
 import opensnitch.proto as proto
 ui_pb2, ui_pb2_grpc = proto.import_()
 
@@ -112,18 +113,9 @@ class PromptDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
 
         self._default_action = self._cfg.getInt(self._cfg.DEFAULT_ACTION_KEY)
 
-        # Load last used choices if available
-        last_action = self._cfg.getInt(self._cfg.DEFAULT_POPUP_LAST_ACTION)
-        if last_action is not None:
-            self._default_action = last_action
-        last_duration = self._cfg.getInt(self._cfg.DEFAULT_POPUP_LAST_DURATION)
-        if last_duration is not None and last_duration >= 0:
-            self.durationCombo.setCurrentIndex(last_duration)
-        last_target = self._cfg.getInt(self._cfg.DEFAULT_POPUP_LAST_TARGET)
-        if last_target is not None and last_target >= 0:
-            self.whatCombo.setCurrentIndex(last_target)
-
-        # Checkbox states are applied in _apply_saved_checkbox_states() after _con is set
+        # NOTE: Do NOT load global popup_last_* here — it causes cross-app
+        # contamination (e.g., curl's settings leaking to Chrome).
+        # All defaults are handled per-connection in _render_connection().
 
         self.allowButton.clicked.connect(lambda: self._on_action_clicked(Config.ACTION_ALLOW_IDX))
         self.allowButton.setIcon(self.allowIcon)
@@ -282,33 +274,33 @@ class PromptDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
         self.checkUserID.setChecked(last_userid)
 
     def _cb_reset_to_defaults(self):
-        """Reset popup choices to preferences defaults."""
-        # Clear saved popup choices (set to preferences defaults)
-        default_action = self._cfg.getInt(self._cfg.DEFAULT_ACTION_KEY)
-        self._cfg.setSettings(self._cfg.DEFAULT_POPUP_LAST_ACTION, default_action)
-        
-        default_duration = self._cfg.getInt(self._cfg.DEFAULT_DURATION_KEY, 0)
-        self._cfg.setSettings(self._cfg.DEFAULT_POPUP_LAST_DURATION, default_duration)
-        
-        default_target = self._cfg.getInt(self._cfg.DEFAULT_TARGET_PROCESS, 0)
-        self._cfg.setSettings(self._cfg.DEFAULT_POPUP_LAST_TARGET, default_target)
-        
-        # Reset advanced checkboxes in settings
-        self._cfg.setSettings(self._cfg.DEFAULT_POPUP_LAST_ADVANCED, False)
-        self._cfg.setSettings(self._cfg.DEFAULT_POPUP_LAST_DSTIP, False)
-        self._cfg.setSettings(self._cfg.DEFAULT_POPUP_LAST_DSTPORT, False)
-        self._cfg.setSettings(self._cfg.DEFAULT_POPUP_LAST_USERID, False)
-        
-        # Update UI immediately - reset action, duration, target
-        self._default_action = default_action
-        self._set_cmd_action_text()
-        self.durationCombo.setCurrentIndex(default_duration)
-        self.whatCombo.setCurrentIndex(default_target)
-        
-        # Also clear the checkboxes in the UI (without toggling advanced visibility)
+        """Reset this app's context-aware defaults and revert to system preferences."""
+        # Clear ALL context settings for this app
+        if self._con:
+            ctx_keys = build_context_keys(self._con)
+            for ctx_id in ctx_keys:
+                for field in Config.CONTEXT_FIELDS:
+                    key = self._cfg._context_key(ctx_id, field)
+                    self._cfg.settings.remove(key)
+                    self._cfg.settings.remove(key + "/_last_access")
+            self._cfg.settings.sync()
+
+        # Reset UI to system defaults
+        self._default_action = self._cfg.getInt(self._cfg.DEFAULT_ACTION_KEY)
+        _utils.populate_duration_combo(self._cfg, self.durationCombo)
+        _utils.set_default_duration(self._cfg, self.durationCombo)
+        # Reset target to system preference, fall back to "from this executable"
+        saved_target = int(self._cfg.getSettings(self._cfg.DEFAULT_TARGET_KEY) or 0)
+        self.whatCombo.setCurrentIndex(saved_target)
+
+        # Reset all checkboxes
+        self.checkAdvanced.setChecked(False)
+        self._check_advanced_toggled(False)
         self.checkDstIP.setChecked(False)
         self.checkDstPort.setChecked(False)
         self.checkUserID.setChecked(False)
+        self.checkSum.setChecked(False)
+        self._set_cmd_action_text()
 
     def _check_advanced_toggled(self, state):
         self.checkDstIP.setVisible(state)
@@ -429,8 +421,9 @@ class PromptDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
         self._render_connection(self._con)
         if self._tick > 0:
             self.show()
-            # Apply saved choices from previous prompts
-            self._apply_saved_choices()
+        # NOTE: _apply_saved_choices() is NOT called here — it would override
+        # per-app context-aware defaults with global last-used values.
+        # _render_connection() already handles all default loading.
         # render details after displaying the pop-up.
 
         self._display_checksums_warning(self._peer, self._con)
@@ -583,17 +576,73 @@ class PromptDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
         self._add_ip_regexp_to_combo(self.whatCombo, self.whatIPCombo, con)
         self._add_dst_networks_to_combo(self.whatIPCombo, con.dst_ip)
 
-        self._default_action = self._cfg.getInt(self._cfg.DEFAULT_ACTION_KEY)
+        # Load last used settings: context-aware first, system defaults as fallback
+        # Only fall back to global LAST_USED when no context keys exist
+        context_keys = build_context_keys(con)
+        _use_global_last_used = not context_keys
+
+        # Action
+        ctx_action = self._cfg.get_context_setting(Config.CONTEXT_FIELD_ACTION, context_keys)
+        if ctx_action is not None:
+            self._default_action = int(ctx_action)
+        elif _use_global_last_used and self._cfg.hasKey(self._cfg.LAST_USED_ACTION):
+            self._default_action = self._cfg.getInt(self._cfg.LAST_USED_ACTION)
+        else:
+            self._default_action = self._cfg.getInt(self._cfg.DEFAULT_ACTION_KEY)
+
+        # Duration — populate combo first to ensure custom durations are available
         _utils.populate_duration_combo(self._cfg, self.durationCombo)
-        _utils.set_default_duration(self._cfg, self.durationCombo)
+        ctx_duration = self._cfg.get_context_setting(Config.CONTEXT_FIELD_DURATION, context_keys)
+        if ctx_duration is not None:
+            self.durationCombo.setCurrentIndex(int(ctx_duration))
+        elif _use_global_last_used and self._cfg.hasKey(self._cfg.LAST_USED_DURATION):
+            self.durationCombo.setCurrentIndex(self._cfg.getInt(self._cfg.LAST_USED_DURATION))
+        else:
+            _utils.set_default_duration(self._cfg, self.durationCombo)
 
         _utils.set_default_target(self.whatCombo, con, self._cfg, app_name, app_args)
 
-        self.checkDstIP.setChecked(self._cfg.getBool(self._cfg.DEFAULT_POPUP_ADVANCED_DSTIP))
-        self.checkDstPort.setChecked(self._cfg.getBool(self._cfg.DEFAULT_POPUP_ADVANCED_DSTPORT))
-        self.checkUserID.setChecked(self._cfg.getBool(self._cfg.DEFAULT_POPUP_ADVANCED_UID))
-        self.checkSum.setChecked(self._cfg.getBool(self._cfg.DEFAULT_POPUP_ADVANCED_CHECKSUM))
-        if self._cfg.getBool(self._cfg.DEFAULT_POPUP_ADVANCED):
+        # Advanced checkboxes: context-aware first
+        ctx_dstip = self._cfg.get_context_setting(Config.CONTEXT_FIELD_DSTIP, context_keys)
+        if ctx_dstip is not None:
+            self.checkDstIP.setChecked(bool(ctx_dstip))
+        elif _use_global_last_used and self._cfg.hasKey(self._cfg.LAST_USED_DSTIP):
+            self.checkDstIP.setChecked(self._cfg.getBool(self._cfg.LAST_USED_DSTIP))
+        else:
+            self.checkDstIP.setChecked(self._cfg.getBool(self._cfg.DEFAULT_POPUP_ADVANCED_DSTIP))
+
+        ctx_dstport = self._cfg.get_context_setting(Config.CONTEXT_FIELD_DSTPORT, context_keys)
+        if ctx_dstport is not None:
+            self.checkDstPort.setChecked(bool(ctx_dstport))
+        elif _use_global_last_used and self._cfg.hasKey(self._cfg.LAST_USED_DSTPORT):
+            self.checkDstPort.setChecked(self._cfg.getBool(self._cfg.LAST_USED_DSTPORT))
+        else:
+            self.checkDstPort.setChecked(self._cfg.getBool(self._cfg.DEFAULT_POPUP_ADVANCED_DSTPORT))
+
+        ctx_uid = self._cfg.get_context_setting(Config.CONTEXT_FIELD_UID, context_keys)
+        if ctx_uid is not None:
+            self.checkUserID.setChecked(bool(ctx_uid))
+        elif _use_global_last_used and self._cfg.hasKey(self._cfg.LAST_USED_UID):
+            self.checkUserID.setChecked(self._cfg.getBool(self._cfg.LAST_USED_UID))
+        else:
+            self.checkUserID.setChecked(self._cfg.getBool(self._cfg.DEFAULT_POPUP_ADVANCED_UID))
+
+        ctx_checksum = self._cfg.get_context_setting(Config.CONTEXT_FIELD_CHECKSUM, context_keys)
+        if ctx_checksum is not None:
+            self.checkSum.setChecked(bool(ctx_checksum))
+        elif _use_global_last_used and self._cfg.hasKey(self._cfg.LAST_USED_CHECKSUM):
+            self.checkSum.setChecked(self._cfg.getBool(self._cfg.LAST_USED_CHECKSUM))
+        else:
+            self.checkSum.setChecked(self._cfg.getBool(self._cfg.DEFAULT_POPUP_ADVANCED_CHECKSUM))
+
+        ctx_advanced = self._cfg.get_context_setting(Config.CONTEXT_FIELD_ADVANCED, context_keys)
+        if ctx_advanced is not None:
+            if bool(ctx_advanced):
+                self.checkAdvanced.toggle()
+        elif _use_global_last_used and self._cfg.hasKey(self._cfg.LAST_USED_ADVANCED):
+            if self._cfg.getBool(self._cfg.LAST_USED_ADVANCED):
+                self.checkAdvanced.toggle()
+        elif self._cfg.getBool(self._cfg.DEFAULT_POPUP_ADVANCED):
             self.checkAdvanced.toggle()
 
         self._set_cmd_action_text()
@@ -707,6 +756,18 @@ class PromptDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
             self._cfg.setSettings(self._cfg.DEFAULT_POPUP_LAST_DSTIP, self.checkDstIP.isChecked())
             self._cfg.setSettings(self._cfg.DEFAULT_POPUP_LAST_DSTPORT, self.checkDstPort.isChecked())
             self._cfg.setSettings(self._cfg.DEFAULT_POPUP_LAST_USERID, self.checkUserID.isChecked())
+
+            # Save context-aware settings per-app + debug trace
+            ctx_keys = build_context_keys(self._con)
+            if ctx_keys:
+                self._cfg.set_context_setting(Config.CONTEXT_FIELD_ACTION, self._default_action, ctx_keys)
+                self._cfg.set_context_setting(Config.CONTEXT_FIELD_DURATION, self.durationCombo.currentIndex(), ctx_keys)
+                self._cfg.set_context_setting(Config.CONTEXT_FIELD_ADVANCED, self.checkAdvanced.isChecked(), ctx_keys)
+                self._cfg.set_context_setting(Config.CONTEXT_FIELD_DSTIP, self.checkDstIP.isChecked(), ctx_keys)
+                self._cfg.set_context_setting(Config.CONTEXT_FIELD_DSTPORT, self.checkDstPort.isChecked(), ctx_keys)
+                self._cfg.set_context_setting(Config.CONTEXT_FIELD_UID, self.checkUserID.isChecked(), ctx_keys)
+                self._cfg.set_context_setting(Config.CONTEXT_FIELD_CHECKSUM, self.checkSum.isChecked(), ctx_keys)
+
             self._rule = ui_pb2.Rule(name="user.choice")
             self._rule.created = int(datetime.now().timestamp())
             self._rule.enabled = True
