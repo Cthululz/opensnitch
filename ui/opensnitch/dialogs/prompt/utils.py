@@ -15,18 +15,33 @@ def build_context_keys(con):
     Build a list of context identifiers for a connection, ordered from most
     specific to least specific. Used for context-aware dialog defaults.
 
-    Hierarchy (per-app only):
-    1. Exact process path (e.g., /usr/bin/curl)
-    2. Process name + parent directory
-    3. Application installation root
-    4. Process command line
-    5. Destination host
+    Hierarchy:
+    0. Per-app + destination host + port (e.g., path:curl+host:google-com+port:443)
+    1. Per-app + destination host (e.g., path:curl+host:google-com)
+    2. Exact process path (e.g., /usr/bin/curl)
+    3. Process name + parent directory
+    4. Application installation root
+    5. Process command line
+    6. Destination host
 
     Returns a list of context key strings, most specific first.
     """
     keys = []
 
-    # Level 1: Exact process path
+    # Level 0-1: Per-destination (per-app + host, per-app + host + port)
+    # These are the most specific — each host gets independent defaults.
+    if con.dst_host and con.dst_host not in ("", "0.0.0.0", "::"):
+        host_key = slugify(con.dst_host)
+        if con.process_path and con.process_path not in ("", "/"):
+            if not con.process_path.startswith("/proc/"):
+                path_key = slugify(con.process_path)
+                # Per-app-per-host-per-port (most granular)
+                if con.dst_port and con.dst_port > 0:
+                    keys.append(f"path:{path_key}+host:{host_key}+port:{con.dst_port}")
+                # Per-app-per-host
+                keys.append(f"path:{path_key}+host:{host_key}")
+
+    # Level 2: Exact process path
     if con.process_path and con.process_path not in ("", "/"):
         if not con.process_path.startswith("/proc/"):
             keys.append("path:" + slugify(con.process_path))

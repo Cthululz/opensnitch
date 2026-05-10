@@ -409,7 +409,10 @@ class Config:
 
     def get_context_setting(self, field, context_keys):
         """
-        Look up a setting from the most specific context key (per-app path key).
+        Look up a setting by walking context keys from most to least specific.
+
+        Only matches keys with a 'path:' prefix (per-app or per-destination).
+        Skips shared keys like 'dir:', 'host:', 'cmd:' which are common across apps.
 
         Args:
             field: One of Config.CONTEXT_FIELD_* constants
@@ -421,11 +424,16 @@ class Config:
         if not self.context_aware_enabled() or not context_keys:
             return None
 
-        ctx_id = context_keys[0]
-        key = self._context_key(ctx_id, field)
-        if self.hasKey(key):
-            self.setSettings(key + "/_last_access", self._now_timestamp())
-            return self.getSettings(key)
+        # Walk through keys from most to least specific.
+        # Per-destination keys (path:app+host:hostname) come first,
+        # then per-app keys (path:app). Each host gets independent settings.
+        for ctx_id in context_keys:
+            if not ctx_id.startswith("path:"):
+                continue  # skip shared keys (dir:, host:, cmd:, root:, content:)
+            key = self._context_key(ctx_id, field)
+            if self.hasKey(key):
+                self.setSettings(key + "/_last_access", self._now_timestamp())
+                return self.getSettings(key)
 
         return None
 

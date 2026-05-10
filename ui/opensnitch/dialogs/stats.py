@@ -3310,87 +3310,95 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
             return "—"
 
     def _update_timeleft_column(self):
-        model = self.rulesTable.model()
+        # Re-entrancy guard: prevent recursive calls from _refresh_active_table
+        # when _rules.updated.emit(0) triggers a table refresh mid-update.
+        if getattr(self, '_updating_timeleft', False):
+            return
+        self._updating_timeleft = True
         try:
-            items = getattr(model, "items", [])
-        except Exception:
-            return
-        if items is None or len(items) == 0:
-            return
-        disabled_any = False
-        # ensure sort cache length
-        if hasattr(model, "timeleft_sort") and len(model.timeleft_sort) != len(items):
-            model.timeleft_sort = [None] * len(items)
-        for idx, row in enumerate(items):
-            if len(row) <= self.COL_R_TIMELEFT:
-                continue
-            val = self._compute_timeleft(row)
-            row[self.COL_R_TIMELEFT] = val
-            # keep numeric sort key
+            model = self.rulesTable.model()
             try:
-                secs = None
-                if val == QC.translate("stats", "expired"):
-                    secs = -1
-                elif val == "—":
-                    secs = 1_000_000_000
-                elif val == "<1m":
-                    secs = 30
-                else:
-                    parts = val.replace("h", "").replace("m", "").split()
-                    if len(parts) == 1:
-                        secs = int(parts[0]) * 60
-                    elif len(parts) == 2:
-                        secs = int(parts[0]) * 3600 + int(parts[1]) * 60
-                if hasattr(model, "timeleft_sort") and idx < len(model.timeleft_sort):
-                    model.timeleft_sort[idx] = secs
+                items = getattr(model, "items", [])
             except Exception:
-                if hasattr(model, "timeleft_sort") and idx < len(model.timeleft_sort):
-                    model.timeleft_sort[idx] = None
-            # auto-disable expired temp rules (enabled + non-permanent + expired)
-            try:
-                dur = str(row[self.COL_R_DURATION]).strip().lower()
-                enabled_raw = str(row[self.COL_R_ENABLED]).strip().lower()
-                node_addr = row[self.COL_R_NODE]
-                rule_name = row[self.COL_R_NAME]
-                key = f"{node_addr}:{rule_name}"
-                if dur not in ("always", "until restart") and enabled_raw not in ("false", "0", "no") and val == QC.translate("stats", "expired"):
-                    if key not in self._expired_processed:
-                        node_clean = str(node_addr).strip() if node_addr is not None else ""
-                        name_clean = str(rule_name).strip() if rule_name is not None else ""
-                        # flip locally and persist, regardless of daemon response
-                        row[self.COL_R_ENABLED] = "False"
-                        try:
-                            self._db.update(
-                                "rules",
-                                "enabled='False'",
-                                (name_clean, node_clean),
-                                "name=? AND node=?",
-                                action_on_conflict="OR REPLACE"
-                            )
-                        except Exception:
-                            pass
-                        self._auto_disable_rule(node_clean, name_clean)
-                        self._expired_processed.add(key)
-                        disabled_any = True
-            except Exception:
-                pass
-        if len(items) > 0:
-            # update both Time left and Enabled columns to refresh the view
-            left_col = min(self.COL_R_TIMELEFT, self.COL_R_ENABLED)
-            right_col = max(self.COL_R_TIMELEFT, self.COL_R_ENABLED)
-            top_left = model.createIndex(0, left_col)
-            bottom_right = model.createIndex(len(items)-1, right_col)
-            model.dataChanged.emit(top_left, bottom_right)
-            try:
-                # force a repaint so changes show without user interaction
-                self.rulesTable.viewport().update()
-            except Exception:
-                pass
-        if disabled_any:
-            try:
-                self._rules.updated.emit(0)
-            except Exception:
-                pass
+                return
+            if items is None or len(items) == 0:
+                return
+            disabled_any = False
+            # ensure sort cache length
+            if hasattr(model, "timeleft_sort") and len(model.timeleft_sort) != len(items):
+                model.timeleft_sort = [None] * len(items)
+            for idx, row in enumerate(items):
+                if len(row) <= self.COL_R_TIMELEFT:
+                    continue
+                val = self._compute_timeleft(row)
+                row[self.COL_R_TIMELEFT] = val
+                # keep numeric sort key
+                try:
+                    secs = None
+                    if val == QC.translate("stats", "expired"):
+                        secs = -1
+                    elif val == "—":
+                        secs = 1_000_000_000
+                    elif val == "<1m":
+                        secs = 30
+                    else:
+                        parts = val.replace("h", "").replace("m", "").split()
+                        if len(parts) == 1:
+                            secs = int(parts[0]) * 60
+                        elif len(parts) == 2:
+                            secs = int(parts[0]) * 3600 + int(parts[1]) * 60
+                    if hasattr(model, "timeleft_sort") and idx < len(model.timeleft_sort):
+                        model.timeleft_sort[idx] = secs
+                except Exception:
+                    if hasattr(model, "timeleft_sort") and idx < len(model.timeleft_sort):
+                        model.timeleft_sort[idx] = None
+                # auto-disable expired temp rules (enabled + non-permanent + expired)
+                try:
+                    dur = str(row[self.COL_R_DURATION]).strip().lower()
+                    enabled_raw = str(row[self.COL_R_ENABLED]).strip().lower()
+                    node_addr = row[self.COL_R_NODE]
+                    rule_name = row[self.COL_R_NAME]
+                    key = f"{node_addr}:{rule_name}"
+                    if dur not in ("always", "until restart") and enabled_raw not in ("false", "0", "no") and val == QC.translate("stats", "expired"):
+                        if key not in self._expired_processed:
+                            node_clean = str(node_addr).strip() if node_addr is not None else ""
+                            name_clean = str(rule_name).strip() if rule_name is not None else ""
+                            # flip locally and persist, regardless of daemon response
+                            row[self.COL_R_ENABLED] = "False"
+                            try:
+                                self._db.update(
+                                    "rules",
+                                    "enabled='False'",
+                                    (name_clean, node_clean),
+                                    "name=? AND node=?",
+                                    action_on_conflict="OR REPLACE"
+                                )
+                            except Exception:
+                                pass
+                            self._auto_disable_rule(node_clean, name_clean)
+                            self._expired_processed.add(key)
+                            disabled_any = True
+                except Exception:
+                    pass
+            if len(items) > 0:
+                # update both Time left and Enabled columns to refresh the view
+                left_col = min(self.COL_R_TIMELEFT, self.COL_R_ENABLED)
+                right_col = max(self.COL_R_TIMELEFT, self.COL_R_ENABLED)
+                top_left = model.createIndex(0, left_col)
+                bottom_right = model.createIndex(len(items)-1, right_col)
+                model.dataChanged.emit(top_left, bottom_right)
+                try:
+                    # force a repaint so changes show without user interaction
+                    self.rulesTable.viewport().update()
+                except Exception:
+                    pass
+            if disabled_any:
+                try:
+                    self._rules.updated.emit(0)
+                except Exception:
+                    pass
+        finally:
+            self._updating_timeleft = False
 
     def _auto_disable_rule(self, node_addr, rule_name):
         """Disable an expired temporary rule in DB and daemon. Returns True if applied."""
