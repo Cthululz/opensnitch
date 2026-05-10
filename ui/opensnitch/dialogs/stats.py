@@ -1887,8 +1887,7 @@ class StatsDialog(QtWidgets.QDialog, uic.loadUiType(DIALOG_UI_PATH)[0]):
                             QC.translate("stats", "Rule not found by that name and node"),
                             QtWidgets.QMessageBox.Icon.Warning)
                     return
-                r = RulesEditorDialog(modal=False)
-                r.edit_rule(records, node)
+                self._rules_dialog.edit_rule(records, node)
                 break
 
         elif cur_idx == self.TAB_RULES and self.fwTable.isVisible():
